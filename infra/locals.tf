@@ -8,6 +8,7 @@ locals {
   enabled_services = toset([
     "cloudfunctions.googleapis.com",
     "firebase.googleapis.com",
+    "firestore.googleapis.com",
     "logging.googleapis.com",
     "monitoring.googleapis.com",
     "storage.googleapis.com",

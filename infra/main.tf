@@ -17,7 +17,7 @@ resource "google_firebase_project_location" "default" {
 
 # A webapp in the firebase project
 resource "google_firebase_web_app" "default" {
-  display_name = "Experiments"
+  display_name = "Sudoku"
 
   provider = google-beta
   depends_on = [
