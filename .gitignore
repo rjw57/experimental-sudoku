@@ -1,2 +1,3 @@
 nodeenv
 *.log
+node_modules/
