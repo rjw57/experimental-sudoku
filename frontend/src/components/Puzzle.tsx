@@ -2,22 +2,24 @@ import { makeStyles, Theme } from '@material-ui/core';
 
 const useStyles = makeStyles((theme: Theme) => ({
   root: {
-    width: 400,
-    height: 400,
+    width: 500,
+    height: 500,
     backgroundColor: 'white',
   },
 
-  outerRect: {
-    strokeWidth: 3,
+  rect: {
     fill: 'none',
     stroke: 'black',
     pointerEvents: 'none',
   },
 
+  outerRect: {
+    strokeWidth: 3,
+  },
+
   cellRect: {
     strokeWidth: 0.5,
-    fill: 'white',
-    stroke: 'black',
+    pointerEvents: 'fill',
 
     '&:hover': {
       fill: 'yellow',
@@ -27,29 +29,32 @@ const useStyles = makeStyles((theme: Theme) => ({
 
   boxRect: {
     strokeWidth: 1.5,
-    fill: 'none',
-    stroke: 'black',
+  },
+
+  digit: {
+    ...theme.typography.body1,
     pointerEvents: 'none',
+    textAnchor: 'middle',
+    dominantBaseline: 'mathematical',
   },
 
   givenDigit: {
-    ...theme.typography.body1,
-
-    pointerEvents: 'none',
-    textAnchor: 'middle',
-    dominantBaseline: 'central',
-    fontSize: '15px',
+    fontSize: 14,
   },
 
   enteredDigit: {
-    ...theme.typography.body1,
+    fill: 'blue',
+    fontSize: 14,
+  },
 
-    pointerEvents: 'none',
-    textAnchor: 'middle',
-    dominantBaseline: 'central',
-    fontSize: '15px',
+  centralPencilDigit: {
+    fontSize: 6,
     fill: 'blue',
   },
+
+  centralPencilDigitCondensed: {
+    fontSize: 4,
+  }
 }));
 
 export interface PuzzleProps {
@@ -75,6 +80,11 @@ export const Puzzle = () => {
     {row: 1, column: 0, digit: 9},
   ];
 
+  const centralPencil = [
+    {row: 2, column: 4, digits: [1, 2, 3, 4, 5, 6]},
+    {row: 3, column: 4, digits: [1, 2, 3]},
+  ];
+
   return (
     <svg className={classes.root} viewBox={[0, 0, 9*cellSize, 9*cellSize].join(' ')}>
       {
@@ -83,7 +93,7 @@ export const Puzzle = () => {
           {
             (new Array(9)).fill(null).map((_, col) => (
               <rect
-                key={`cell-${row}-${col}`} className={classes.cellRect}
+                key={`cell-${row}-${col}`} className={`${classes.rect} ${classes.cellRect}`}
                 x={col*cellSize} y={row*cellSize}
                 width={cellSize} height={cellSize}
               />
@@ -95,7 +105,7 @@ export const Puzzle = () => {
       {
         givens.map(({ row, column, digit }) => (
           <text
-            key={`given-${row}-${column}`} className={classes.givenDigit}
+            key={`given-${row}-${column}`} className={`${classes.digit} ${classes.givenDigit}`}
             x={(0.5+column)*cellSize} y={(-0.5+row)*cellSize}
           >{
             digit
@@ -105,21 +115,35 @@ export const Puzzle = () => {
       {
         entered.map(({ row, column, digit }) => (
           <text
-            key={`entered-${row}-${column}`} className={classes.enteredDigit}
+            key={`entered-${row}-${column}`} className={`${classes.digit} ${classes.enteredDigit}`}
             x={(0.5+column)*cellSize} y={(-0.5+row)*cellSize}
           >{
             digit
           }</text>
         ))
       }
-      <rect className={classes.outerRect} x={0} y={0} width={9*cellSize} height={9*cellSize} />
+      {
+        centralPencil.map(({ row, column, digits }) => (
+          <text
+            key={`centralPencil-${row}-${column}`}
+            className={`${classes.digit} ${classes.centralPencilDigit} ${digits.length >= 6 ? classes.centralPencilDigitCondensed : ''}`}
+            x={(0.5+column)*cellSize} y={(-0.5+row)*cellSize}
+          >{
+            digits.join('')
+          }</text>
+        ))
+      }
+      <rect
+        className={`${classes.rect} ${classes.outerRect}`}
+        x={0} y={0} width={9*cellSize} height={9*cellSize}
+      />
       {
         (new Array(3)).fill(null).map((_, row) => (
           <>
           {
             (new Array(3)).fill(null).map((_, col) => (
               <rect
-                key={`box-${row}-${col}`} className={classes.boxRect}
+                key={`box-${row}-${col}`} className={`${classes.rect} ${classes.boxRect}`}
                 x={col*cellSize*3} y={row*cellSize*3}
                 width={cellSize*3} height={cellSize*3}
               />
