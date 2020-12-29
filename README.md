@@ -6,3 +6,7 @@ $ npm install
 $ npm test
 ```
 
+## Data model
+
+* /puzzles/{puzzleId}: Puzzle
+* /users/{userId}: User
