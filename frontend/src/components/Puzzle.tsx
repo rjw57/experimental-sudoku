@@ -26,6 +26,11 @@ export interface PuzzleState {
     column: number;
     digits: number[];
   }[];
+
+  selection?: {
+    row: number;
+    column: number;
+  }[];
 };
 
 const styles = (theme: Theme) => createStyles({
@@ -48,8 +53,7 @@ const styles = (theme: Theme) => createStyles({
     pointerEvents: 'fill',
 
     '&:hover': {
-      fill: 'yellow',
-      fillOpacity: 0.25,
+      fill: theme.palette.action.hover,
     },
   },
 
@@ -64,26 +68,22 @@ const styles = (theme: Theme) => createStyles({
   },
 
   givenDigit: {
-    fontSize: 14,
   },
 
   enteredDigit: {
-    fill: 'blue',
-    fontSize: 14,
+    fill: theme.palette.primary.main,
   },
 
   centrePencilDigit: {
-    fontSize: 6,
-    fill: 'blue',
-  },
-
-  centrePencilDigitCondensed: {
-    fontSize: 4,
+    fill: theme.palette.primary.main,
   },
 
   cornerPencilDigit: {
-    fontSize: 4,
-    fill: 'blue',
+    fill: theme.palette.primary.main,
+  },
+
+  selection: {
+    fill: theme.palette.action.selected,
   },
 });
 
@@ -97,9 +97,9 @@ export interface PuzzleProps extends StyledComponentProps<ClassKeyOfStyles<typeo
 export const Puzzle = (props: PuzzleProps) => {
   const { puzzleState = {}, svgProps = {} } = props;
   const classes = useStyles(props);
-  const cellSize = 20;
-  const textShift = '0.35em';
 
+  const cellSize = 20;
+  const textShift = '0.6ex';
   const cornerPencilAnchors = [
     { x: (1/6) * cellSize, y: (1/6) * cellSize },
     { x: (3/6) * cellSize, y: (1/6) * cellSize },
@@ -112,24 +112,19 @@ export const Puzzle = (props: PuzzleProps) => {
   ];
 
   const {
-    givenDigits = [], enteredDigits = [], centrePencils = [], cornerPencils = []
+    givenDigits = [], enteredDigits = [], centrePencils = [], cornerPencils = [],
+    selection = [],
   } = puzzleState;
 
   return (
     <svg className={classes.root} viewBox={[0, 0, 9*cellSize, 9*cellSize].join(' ')} {...svgProps}>
       {
-        (new Array(9)).fill(null).map((_, row) => (
-          <>
-          {
-            (new Array(9)).fill(null).map((_, col) => (
-              <rect
-                key={`cell-${row}-${col}`} className={`${classes.rect} ${classes.cellRect}`}
-                x={col*cellSize} y={row*cellSize}
-                width={cellSize} height={cellSize}
-              />
-            ))
-          }
-          </>
+        selection.map(({ row, column }) => (
+          <rect
+            key={`selection-${row}-${column}`} className={classes.selection}
+            x={column*cellSize} y={row*cellSize}
+            width={cellSize} height={cellSize}
+          />
         ))
       }
       {
@@ -137,6 +132,7 @@ export const Puzzle = (props: PuzzleProps) => {
           <text
             key={`given-${row}-${column}`} className={`${classes.digit} ${classes.givenDigit}`}
             x={(0.5+column)*cellSize} y={(0.5+row)*cellSize} dy={textShift}
+            style={{fontSize: 0.8*cellSize}}
           >{
             digit
           }</text>
@@ -147,6 +143,7 @@ export const Puzzle = (props: PuzzleProps) => {
           <text
             key={`entered-${row}-${column}`} className={`${classes.digit} ${classes.enteredDigit}`}
             x={(0.5+column)*cellSize} y={(0.5+row)*cellSize} dy={textShift}
+            style={{fontSize: 0.8*cellSize}}
           >{
             digit
           }</text>
@@ -161,6 +158,7 @@ export const Puzzle = (props: PuzzleProps) => {
                 key={`cornerPencil-${row}-${column}-${digit}`}
                 className={`${classes.digit} ${classes.cornerPencilDigit}`}
                 x={column*cellSize + x} y={row*cellSize + y} dy={textShift}
+                style={{fontSize: 0.25*cellSize}}
               >{
                 digit
               }</text>
@@ -172,11 +170,27 @@ export const Puzzle = (props: PuzzleProps) => {
         centrePencils.map(({ row, column, digits }) => (
           <text
             key={`centrePencil-${row}-${column}`}
-            className={`${classes.digit} ${classes.centrePencilDigit} ${digits.length >= 6 ? classes.centrePencilDigitCondensed : ''}`}
+            className={`${classes.digit} ${classes.centrePencilDigit}`}
             x={(0.5+column)*cellSize} y={(0.5+row)*cellSize} dy={textShift}
+            style={{fontSize: digits.length >= 6 ? 0.2*cellSize : 0.25*cellSize}}
           >{
             digits.join('')
           }</text>
+        ))
+      }
+      {
+        (new Array(9)).fill(null).map((_, row) => (
+          <>
+          {
+            (new Array(9)).fill(null).map((_, col) => (
+              <rect
+                key={`cell-${row}-${col}`} className={`${classes.rect} ${classes.cellRect}`}
+                x={col*cellSize} y={row*cellSize}
+                width={cellSize} height={cellSize}
+              />
+            ))
+          }
+          </>
         ))
       }
       <rect

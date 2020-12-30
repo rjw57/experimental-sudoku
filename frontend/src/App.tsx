@@ -34,6 +34,19 @@ const puzzleState: PuzzleState = {
     {row: 0, column: 8, digits: [1, 2, 3, 4, 5, 6]},
     {row: 3, column: 7, digits: [1, 2, 3]},
   ],
+  selection: [
+    {row: 2, column: 8 },
+    {row: 3, column: 1 },
+    {row: 2, column: 2 },
+    {row: 4, column: 8 },
+    {row: 6, column: 7 },
+    {row: 7, column: 6 },
+    {row: 8, column: 2 },
+    {row: 2, column: 6 },
+    {row: 1, column: 0 },
+    {row: 2, column: 4 },
+    {row: 3, column: 4 },
+  ],
 };
 
 export const App = () => {
