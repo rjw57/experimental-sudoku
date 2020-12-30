@@ -1,4 +1,4 @@
-import { SVGProps } from 'react';
+import { SVGProps, SyntheticEvent, MouseEvent } from 'react';
 import { Theme, makeStyles, createStyles } from '@material-ui/core';
 import { StyledComponentProps, ClassKeyOfStyles } from '@material-ui/styles';
 
@@ -81,19 +81,29 @@ const styles = (theme: Theme) => createStyles({
   },
 
   selection: {
-    fill: theme.palette.action.selected,
+    fill: 'yellow',
   },
 });
 
 const useStyles = makeStyles(styles);
 
-export interface PuzzleProps extends StyledComponentProps<ClassKeyOfStyles<typeof styles>> {
+export interface CellClickEvent extends SyntheticEvent {
+  row: number;
+  column: number;
+};
+
+export interface CellMouseEvent extends MouseEvent {
+  row: number;
+  column: number;
+};
+
+export interface PuzzleProps extends SVGProps<SVGSVGElement>, StyledComponentProps<ClassKeyOfStyles<typeof styles>> {
   puzzleState?: PuzzleState;
-  svgProps?: SVGProps<SVGSVGElement>;
+  onCellClick?: (event: CellClickEvent) => void;
 };
 
 export const Puzzle = (props: PuzzleProps) => {
-  const { puzzleState = {}, svgProps = {} } = props;
+  const { puzzleState = {}, onCellClick, ...svgProps } = props;
   const classes = useStyles(props);
 
   const cellSize = 20;
@@ -115,7 +125,10 @@ export const Puzzle = (props: PuzzleProps) => {
   } = puzzleState;
 
   return (
-    <svg className={classes.root} viewBox={[0, 0, 9*cellSize, 9*cellSize].join(' ')} {...svgProps}>
+    <svg
+      className={classes.root} viewBox={[0, 0, 9*cellSize, 9*cellSize].join(' ')}
+      {...svgProps}
+    >
       {
         selection.map(({ row, column }) => (
           <rect
@@ -176,21 +189,6 @@ export const Puzzle = (props: PuzzleProps) => {
           }</text>
         ))
       }
-      {
-        (new Array(9)).fill(null).map((_, row) => (
-          <>
-          {
-            (new Array(9)).fill(null).map((_, col) => (
-              <rect
-                key={`cell-${row}-${col}`} className={`${classes.rect} ${classes.cellRect}`}
-                x={col*cellSize} y={row*cellSize}
-                width={cellSize} height={cellSize}
-              />
-            ))
-          }
-          </>
-        ))
-      }
       <rect
         className={`${classes.rect} ${classes.outerRect}`}
         x={0} y={0} width={9*cellSize} height={9*cellSize}
@@ -199,11 +197,27 @@ export const Puzzle = (props: PuzzleProps) => {
         (new Array(3)).fill(null).map((_, row) => (
           <>
           {
-            (new Array(3)).fill(null).map((_, col) => (
+            (new Array(3)).fill(null).map((_, column) => (
               <rect
-                key={`box-${row}-${col}`} className={`${classes.rect} ${classes.boxRect}`}
-                x={col*cellSize*3} y={row*cellSize*3}
+                key={`box-${row}-${column}`} className={`${classes.rect} ${classes.boxRect}`}
+                x={column*cellSize*3} y={row*cellSize*3}
                 width={cellSize*3} height={cellSize*3}
+              />
+            ))
+          }
+          </>
+        ))
+      }
+      {
+        (new Array(9)).fill(null).map((_, row) => (
+          <>
+          {
+            (new Array(9)).fill(null).map((_, column) => (
+              <rect
+                key={`cell-${row}-${column}`} className={`${classes.rect} ${classes.cellRect}`}
+                x={column*cellSize} y={row*cellSize}
+                width={cellSize} height={cellSize}
+                onClick={onCellClick && (event => onCellClick({...event, row, column}))}
               />
             ))
           }

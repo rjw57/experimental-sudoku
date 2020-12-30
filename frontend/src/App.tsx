@@ -56,7 +56,10 @@ export const App = () => {
   return (
     <div className="App">
       <header className="App-header">
-        <Puzzle classes={{root: classes.puzzleRoot}} puzzleState={puzzleState} />
+        <Puzzle
+          classes={{root: classes.puzzleRoot}} puzzleState={puzzleState}
+          onCellClick={event => console.log('click', event)}
+        />
       </header>
     </div>
   );
