@@ -94,19 +94,20 @@ export interface CellMouseEvent extends MouseEvent {
   column: number;
 };
 
-export interface PuzzleProps extends SVGProps<SVGSVGElement>, StyledComponentProps<ClassKeyOfStyles<typeof styles>> {
+export interface PuzzleProps extends StyledComponentProps<ClassKeyOfStyles<typeof styles>> {
   puzzleState?: PuzzleState;
   onCellClick?: (event: CellMouseEvent) => void;
   onCellDragStart?: (event: CellMouseEvent) => void;
   onCellDrag?: (event: CellMouseEvent) => void;
   onCellDragEnd?: (event: CellMouseEvent) => void;
+  svgProps?: SVGProps<SVGSVGElement>;
 };
 
 export const Puzzle = (props: PuzzleProps) => {
   const {
     puzzleState = {},
     onCellClick, onCellDragStart, onCellDrag, onCellDragEnd,
-    ...svgProps
+    svgProps
   } = props;
   const classes = useStyles(props);
 
