@@ -1,4 +1,4 @@
-import { SVGProps, SyntheticEvent, MouseEvent } from 'react';
+import { useState, SVGProps, MouseEvent } from 'react';
 import { Theme, makeStyles, createStyles } from '@material-ui/core';
 import { StyledComponentProps, ClassKeyOfStyles } from '@material-ui/styles';
 
@@ -34,7 +34,8 @@ export interface PuzzleState {
 };
 
 const styles = (theme: Theme) => createStyles({
-  root: { },
+  root: {
+  },
 
   rect: {
     fill: 'none',
@@ -61,6 +62,7 @@ const styles = (theme: Theme) => createStyles({
 
   digit: {
     ...theme.typography.body1,
+    userSelect: 'none',
     pointerEvents: 'none',
     textAnchor: 'middle',
   },
@@ -87,11 +89,6 @@ const styles = (theme: Theme) => createStyles({
 
 const useStyles = makeStyles(styles);
 
-export interface CellClickEvent extends SyntheticEvent {
-  row: number;
-  column: number;
-};
-
 export interface CellMouseEvent extends MouseEvent {
   row: number;
   column: number;
@@ -99,12 +96,31 @@ export interface CellMouseEvent extends MouseEvent {
 
 export interface PuzzleProps extends SVGProps<SVGSVGElement>, StyledComponentProps<ClassKeyOfStyles<typeof styles>> {
   puzzleState?: PuzzleState;
-  onCellClick?: (event: CellClickEvent) => void;
+  onCellClick?: (event: CellMouseEvent) => void;
+  onCellDragStart?: (event: CellMouseEvent) => void;
+  onCellDrag?: (event: CellMouseEvent) => void;
+  onCellDragEnd?: (event: CellMouseEvent) => void;
 };
 
 export const Puzzle = (props: PuzzleProps) => {
-  const { puzzleState = {}, onCellClick, ...svgProps } = props;
+  const {
+    puzzleState = {},
+    onCellClick, onCellDragStart, onCellDrag, onCellDragEnd,
+    ...svgProps
+  } = props;
   const classes = useStyles(props);
+
+  const [dragStartEvent, setDragStartEvent] = useState<CellMouseEvent | undefined>();
+  const [isDragging, setIsDragging] = useState(false);
+  const handleDragStart = (event: MouseEvent, row: number, column: number) => {
+    onCellDragStart && onCellDragStart({...event, row, column});
+  }
+  const handleDrag = (event: MouseEvent, row: number, column: number) => {
+    isDragging && onCellDrag && onCellDrag({...event, row, column});
+  }
+  const handleDragEnd = (event: MouseEvent, row: number, column: number) => {
+    onCellDragEnd && onCellDragEnd({...event, row, column});
+  }
 
   const cellSize = 20;
   const textShift = '0.6ex';
@@ -218,6 +234,38 @@ export const Puzzle = (props: PuzzleProps) => {
                 x={column*cellSize} y={row*cellSize}
                 width={cellSize} height={cellSize}
                 onClick={onCellClick && (event => onCellClick({...event, row, column}))}
+                onMouseDown={event => {
+                  if(!isDragging) {
+                    setIsDragging(true);
+                    setDragStartEvent({...event, row, column});
+                  }
+                }}
+                onMouseMove={isDragging ? (event => {
+                  if(isDragging) {
+                    // If this is the first movement, send the drag start event.
+                    if(dragStartEvent) {
+                      setDragStartEvent(undefined);
+                      handleDragStart(dragStartEvent, row, column);
+                    }
+
+                    if(event.buttons === 0) {
+                      // If no button is pressed, end the drag event.
+                      setIsDragging(false);
+                      setDragStartEvent(undefined);
+                      handleDragEnd(event, row, column);
+                    } else {
+                      // Continue the drag event.
+                      handleDrag(event, row, column);
+                    }
+                  }
+                }) : undefined}
+                onMouseUp={event => {
+                  setIsDragging(false);
+                  if(dragStartEvent) {
+                    setDragStartEvent(undefined);
+                    handleDragEnd(event, row, column);
+                  }
+                }}
               />
             ))
           }

@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState } from 'react';
 import './App.css';
 import { makeStyles, createStyles, Theme } from '@material-ui/core';
 
@@ -35,30 +35,31 @@ const puzzleState: PuzzleState = {
     {row: 0, column: 8, digits: [1, 2, 3, 4, 5, 6]},
     {row: 3, column: 7, digits: [1, 2, 3]},
   ],
-  selection: [
-    {row: 2, column: 8 },
-    {row: 3, column: 1 },
-    {row: 2, column: 2 },
-    {row: 4, column: 8 },
-    {row: 6, column: 7 },
-    {row: 7, column: 6 },
-    {row: 8, column: 2 },
-    {row: 2, column: 6 },
-    {row: 1, column: 0 },
-    {row: 2, column: 4 },
-    {row: 3, column: 4 },
-  ],
 };
 
 export const App = () => {
   const classes = useStyles();
+  const [selection, setSelection] = useState<PuzzleState["selection"]>([]);
+
+  const selectCell = (row: number, column: number, extend = false) => {
+    if(!extend) {
+      setSelection([{row, column}]);
+    } else {
+      setSelection(prev => ([
+        {row, column},
+        ...(prev ? prev.filter(s => s.row !== row || s.column !== column) : [])
+      ]));
+    }
+  };
 
   return (
     <div className="App">
       <header className="App-header">
         <Puzzle
-          classes={{root: classes.puzzleRoot}} puzzleState={puzzleState}
-          onCellClick={event => console.log('click', event)}
+          classes={{root: classes.puzzleRoot}} puzzleState={{...puzzleState, selection}}
+          onCellClick={({row, column, ctrlKey}) => selectCell(row, column, ctrlKey)}
+          onCellDragStart={({row, column, ctrlKey}) => selectCell(row, column, ctrlKey)}
+          onCellDrag={({row, column }) => selectCell(row, column, true)}
         />
       </header>
     </div>
