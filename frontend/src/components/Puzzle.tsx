@@ -1,4 +1,4 @@
-import { useState, SVGProps, MouseEvent, SyntheticEvent } from 'react';
+import { useState, SVGProps, MouseEvent, KeyboardEvent, SyntheticEvent } from 'react';
 import { Theme, makeStyles, createStyles } from '@material-ui/core';
 import { StyledComponentProps, ClassKeyOfStyles } from '@material-ui/styles';
 
@@ -103,13 +103,15 @@ export interface PuzzleProps extends StyledComponentProps<ClassKeyOfStyles<typeo
   onCellDragEnd?: (event: CellMouseEvent) => void;
   onFocus?: (event: SyntheticEvent) => void;
   onBlur?: (event: SyntheticEvent) => void;
+  onKeyDown?: (event: KeyboardEvent) => void
   svgProps?: SVGProps<SVGSVGElement>;
 };
 
 export const Puzzle = (props: PuzzleProps) => {
   const {
     puzzleState = {},
-    onCellClick, onCellDragStart, onCellDrag, onCellDragEnd, onFocus, onBlur, tabIndex = -1,
+    onCellClick, onCellDragStart, onCellDrag, onCellDragEnd, onFocus, onBlur, onKeyDown,
+    tabIndex = -1,
     svgProps
   } = props;
   const classes = useStyles(props);
@@ -147,7 +149,7 @@ export const Puzzle = (props: PuzzleProps) => {
   return (
     <svg
       className={classes.root} viewBox={[0, 0, 9*cellSize, 9*cellSize].join(' ')}
-      onFocus={onFocus} onBlur={onBlur} tabIndex={tabIndex}
+      onKeyDown={onKeyDown} onFocus={onFocus} onBlur={onBlur} tabIndex={tabIndex}
       {...svgProps}
     >
       {

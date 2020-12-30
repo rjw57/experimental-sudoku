@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import './App.css';
 import { makeStyles, createStyles, Theme } from '@material-ui/core';
 
@@ -12,7 +12,7 @@ const useStyles = makeStyles((theme: Theme) => createStyles({
   },
 }));
 
-const puzzleState: PuzzleState = {
+const INITIAL_PUZZLE_STATE: PuzzleState = {
   givenDigits: [
     {row: 1, column: 2, digit: 7},
   ],
@@ -39,18 +39,74 @@ const puzzleState: PuzzleState = {
 
 export const App = () => {
   const classes = useStyles();
-  const [selection, setSelection] = useState<PuzzleState["selection"]>([]);
 
-  const selectCell = (row: number, column: number, extend = false) => {
-    if(!extend) {
-      setSelection([{row, column}]);
-    } else {
-      setSelection(prev => ([
-        {row, column},
-        ...(prev ? prev.filter(s => s.row !== row || s.column !== column) : [])
-      ]));
-    }
-  };
+  const [puzzleState, setPuzzleState] = useState<PuzzleState>(INITIAL_PUZZLE_STATE);
+  const { selection = [] } = puzzleState;
+
+  const setSelection = useCallback(
+    (valOrFunc: PuzzleState["selection"] | ((prev: PuzzleState["selection"]) => PuzzleState["selection"])) => {
+      if(typeof valOrFunc === 'function') {
+        return setPuzzleState(prev => ({...prev, selection: valOrFunc(prev.selection)}));
+      } else {
+        return setPuzzleState(prev => ({...prev, selection: valOrFunc}));
+      }
+    }, [setPuzzleState]
+  );
+
+  const setDigit = useCallback((digit: number) => setPuzzleState(puzzleState => {
+    let newEnteredDigits = [...(puzzleState.enteredDigits || [])];
+    (puzzleState.selection || []).forEach(({ row, column }) => {
+      newEnteredDigits = newEnteredDigits.filter(elem => elem.row !== row || elem.column !== column);
+      newEnteredDigits.push({ row, column, digit });
+    });
+    return {...puzzleState, enteredDigits: newEnteredDigits};
+  }), [setPuzzleState]);
+
+  useEffect(() => {
+    const moveSelection = (dr: number, dc: number) => setSelection(prev => {
+      if(!prev || prev.length !== 1) { return; }
+      const { row, column } = prev[0];
+      return [{ row: (9+row+dr) % 9, column: (9+column+dc) % 9 }];
+    });
+
+    const handlerFunc = (event: KeyboardEvent) => {
+      const digit = '0123456789'.indexOf(event.key);
+      if(digit >= 1 && digit <= 9) {
+        setDigit(digit);
+      }
+
+      switch(event.key) {
+        case 'ArrowUp':
+          moveSelection(-1, 0);
+          break;
+        case 'ArrowDown':
+          moveSelection(1, 0);
+          break;
+        case 'ArrowLeft':
+          moveSelection(0, -1);
+          break;
+        case 'ArrowRight':
+          moveSelection(0, 1);
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handlerFunc);
+    return () => { document.removeEventListener('keydown', handlerFunc); }
+  }, [setSelection, setDigit, setPuzzleState]);
+
+  const selectCell = useCallback(
+    (row: number, column: number, extend = false) => {
+      if(!extend) {
+        setSelection([{row, column}]);
+      } else {
+        setSelection(prev => ([
+          {row, column},
+          ...(prev ? prev.filter(s => s.row !== row || s.column !== column) : [])
+        ]));
+      }
+    }, [setSelection]
+  );
 
   return (
     <div className="App">
