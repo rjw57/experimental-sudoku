@@ -31,8 +31,8 @@ const puzzleState: PuzzleState = {
     {row: 3, column: 4, digits: [1, 2, 3]},
   ],
   cornerPencils: [
-    {row: 2, column: 4, digits: [1, 2, 3, 4, 5, 6]},
-    {row: 3, column: 4, digits: [1, 2, 3]},
+    {row: 0, column: 8, digits: [1, 2, 3, 4, 5, 6]},
+    {row: 3, column: 7, digits: [1, 2, 3]},
   ],
 };
 

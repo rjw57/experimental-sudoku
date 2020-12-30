@@ -79,7 +79,12 @@ const styles = (theme: Theme) => createStyles({
 
   centrePencilDigitCondensed: {
     fontSize: 4,
-  }
+  },
+
+  cornerPencilDigit: {
+    fontSize: 4,
+    fill: 'blue',
+  },
 });
 
 const useStyles = makeStyles(styles);
@@ -94,6 +99,17 @@ export const Puzzle = (props: PuzzleProps) => {
   const classes = useStyles(props);
   const cellSize = 20;
   const textShift = '0.35em';
+
+  const cornerPencilAnchors = [
+    { x: (1/6) * cellSize, y: (1/6) * cellSize },
+    { x: (3/6) * cellSize, y: (1/6) * cellSize },
+    { x: (5/6) * cellSize, y: (1/6) * cellSize },
+    { x: (1/6) * cellSize, y: (3/6) * cellSize },
+    { x: (5/6) * cellSize, y: (3/6) * cellSize },
+    { x: (1/6) * cellSize, y: (5/6) * cellSize },
+    { x: (3/6) * cellSize, y: (5/6) * cellSize },
+    { x: (5/6) * cellSize, y: (5/6) * cellSize },
+  ];
 
   const {
     givenDigits = [], enteredDigits = [], centrePencils = [], cornerPencils = []
@@ -120,7 +136,7 @@ export const Puzzle = (props: PuzzleProps) => {
         givenDigits.map(({ row, column, digit }) => (
           <text
             key={`given-${row}-${column}`} className={`${classes.digit} ${classes.givenDigit}`}
-            x={(0.5+column)*cellSize} y={(-0.5+row)*cellSize} dy={textShift}
+            x={(0.5+column)*cellSize} y={(0.5+row)*cellSize} dy={textShift}
           >{
             digit
           }</text>
@@ -130,10 +146,26 @@ export const Puzzle = (props: PuzzleProps) => {
         enteredDigits.map(({ row, column, digit }) => (
           <text
             key={`entered-${row}-${column}`} className={`${classes.digit} ${classes.enteredDigit}`}
-            x={(0.5+column)*cellSize} y={(-0.5+row)*cellSize} dy={textShift}
+            x={(0.5+column)*cellSize} y={(0.5+row)*cellSize} dy={textShift}
           >{
             digit
           }</text>
+        ))
+      }
+      {
+        cornerPencils.map(({ row, column, digits }) => (
+          digits.map((digit, index) => {
+            const {x, y} = cornerPencilAnchors[index % cornerPencilAnchors.length];
+            return (
+              <text
+                key={`cornerPencil-${row}-${column}-${digit}`}
+                className={`${classes.digit} ${classes.cornerPencilDigit}`}
+                x={column*cellSize + x} y={row*cellSize + y} dy={textShift}
+              >{
+                digit
+              }</text>
+            );
+          })
         ))
       }
       {
@@ -141,7 +173,7 @@ export const Puzzle = (props: PuzzleProps) => {
           <text
             key={`centrePencil-${row}-${column}`}
             className={`${classes.digit} ${classes.centrePencilDigit} ${digits.length >= 6 ? classes.centrePencilDigitCondensed : ''}`}
-            x={(0.5+column)*cellSize} y={(-0.5+row)*cellSize} dy={textShift}
+            x={(0.5+column)*cellSize} y={(0.5+row)*cellSize} dy={textShift}
           >{
             digits.join('')
           }</text>
