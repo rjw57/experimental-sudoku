@@ -6,6 +6,7 @@ import { Puzzle, PuzzleState } from './components';
 
 const useStyles = makeStyles((theme: Theme) => createStyles({
   puzzleRoot: {
+    backgroundColor: theme.palette.background.default,
     width: 500,
     height: 500,
   },

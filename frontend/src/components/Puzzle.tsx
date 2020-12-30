@@ -34,9 +34,7 @@ export interface PuzzleState {
 };
 
 const styles = (theme: Theme) => createStyles({
-  root: {
-    backgroundColor: 'white',
-  },
+  root: { },
 
   rect: {
     fill: 'none',
