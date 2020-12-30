@@ -1,9 +1,35 @@
-import { makeStyles, Theme } from '@material-ui/core';
+import { SVGProps } from 'react';
+import { Theme, makeStyles, createStyles } from '@material-ui/core';
+import { StyledComponentProps, ClassKeyOfStyles } from '@material-ui/styles';
 
-const useStyles = makeStyles((theme: Theme) => ({
+export interface PuzzleState {
+  givenDigits?: {
+    row: number;
+    column: number;
+    digit: number;
+  }[];
+
+  enteredDigits?: {
+    row: number;
+    column: number;
+    digit: number;
+  }[];
+
+  centrePencils?: {
+    row: number;
+    column: number;
+    digits: number[];
+  }[];
+
+  cornerPencils?: {
+    row: number;
+    column: number;
+    digits: number[];
+  }[];
+};
+
+const styles = (theme: Theme) => createStyles({
   root: {
-    width: 500,
-    height: 500,
     backgroundColor: 'white',
   },
 
@@ -35,7 +61,6 @@ const useStyles = makeStyles((theme: Theme) => ({
     ...theme.typography.body1,
     pointerEvents: 'none',
     textAnchor: 'middle',
-    dominantBaseline: 'mathematical',
   },
 
   givenDigit: {
@@ -47,46 +72,35 @@ const useStyles = makeStyles((theme: Theme) => ({
     fontSize: 14,
   },
 
-  centralPencilDigit: {
+  centrePencilDigit: {
     fontSize: 6,
     fill: 'blue',
   },
 
-  centralPencilDigitCondensed: {
+  centrePencilDigitCondensed: {
     fontSize: 4,
   }
-}));
+});
 
-export interface PuzzleProps {
+const useStyles = makeStyles(styles);
+
+export interface PuzzleProps extends StyledComponentProps<ClassKeyOfStyles<typeof styles>> {
+  puzzleState?: PuzzleState;
+  svgProps?: SVGProps<SVGSVGElement>;
 };
 
-export const Puzzle = () => {
-  const classes = useStyles();
+export const Puzzle = (props: PuzzleProps) => {
+  const { puzzleState = {}, svgProps = {} } = props;
+  const classes = useStyles(props);
   const cellSize = 20;
+  const textShift = '0.35em';
 
-  const givens = [
-    {row: 1, column: 2, digit: 7},
-  ];
-
-  const entered = [
-    {row: 2, column: 8, digit: 1},
-    {row: 3, column: 1, digit: 2},
-    {row: 2, column: 2, digit: 3},
-    {row: 4, column: 8, digit: 4},
-    {row: 6, column: 7, digit: 5},
-    {row: 7, column: 6, digit: 6},
-    {row: 8, column: 2, digit: 7},
-    {row: 2, column: 6, digit: 8},
-    {row: 1, column: 0, digit: 9},
-  ];
-
-  const centralPencil = [
-    {row: 2, column: 4, digits: [1, 2, 3, 4, 5, 6]},
-    {row: 3, column: 4, digits: [1, 2, 3]},
-  ];
+  const {
+    givenDigits = [], enteredDigits = [], centrePencils = [], cornerPencils = []
+  } = puzzleState;
 
   return (
-    <svg className={classes.root} viewBox={[0, 0, 9*cellSize, 9*cellSize].join(' ')}>
+    <svg className={classes.root} viewBox={[0, 0, 9*cellSize, 9*cellSize].join(' ')} {...svgProps}>
       {
         (new Array(9)).fill(null).map((_, row) => (
           <>
@@ -103,31 +117,31 @@ export const Puzzle = () => {
         ))
       }
       {
-        givens.map(({ row, column, digit }) => (
+        givenDigits.map(({ row, column, digit }) => (
           <text
             key={`given-${row}-${column}`} className={`${classes.digit} ${classes.givenDigit}`}
-            x={(0.5+column)*cellSize} y={(-0.5+row)*cellSize}
+            x={(0.5+column)*cellSize} y={(-0.5+row)*cellSize} dy={textShift}
           >{
             digit
           }</text>
         ))
       }
       {
-        entered.map(({ row, column, digit }) => (
+        enteredDigits.map(({ row, column, digit }) => (
           <text
             key={`entered-${row}-${column}`} className={`${classes.digit} ${classes.enteredDigit}`}
-            x={(0.5+column)*cellSize} y={(-0.5+row)*cellSize}
+            x={(0.5+column)*cellSize} y={(-0.5+row)*cellSize} dy={textShift}
           >{
             digit
           }</text>
         ))
       }
       {
-        centralPencil.map(({ row, column, digits }) => (
+        centrePencils.map(({ row, column, digits }) => (
           <text
-            key={`centralPencil-${row}-${column}`}
-            className={`${classes.digit} ${classes.centralPencilDigit} ${digits.length >= 6 ? classes.centralPencilDigitCondensed : ''}`}
-            x={(0.5+column)*cellSize} y={(-0.5+row)*cellSize}
+            key={`centrePencil-${row}-${column}`}
+            className={`${classes.digit} ${classes.centrePencilDigit} ${digits.length >= 6 ? classes.centrePencilDigitCondensed : ''}`}
+            x={(0.5+column)*cellSize} y={(-0.5+row)*cellSize} dy={textShift}
           >{
             digits.join('')
           }</text>
