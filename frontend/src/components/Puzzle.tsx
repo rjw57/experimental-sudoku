@@ -1,4 +1,4 @@
-import { useState, SVGProps, MouseEvent } from 'react';
+import { useState, SVGProps, MouseEvent, SyntheticEvent } from 'react';
 import { Theme, makeStyles, createStyles } from '@material-ui/core';
 import { StyledComponentProps, ClassKeyOfStyles } from '@material-ui/styles';
 
@@ -34,8 +34,7 @@ export interface PuzzleState {
 };
 
 const styles = (theme: Theme) => createStyles({
-  root: {
-  },
+  root: { },
 
   rect: {
     fill: 'none',
@@ -65,6 +64,7 @@ const styles = (theme: Theme) => createStyles({
     userSelect: 'none',
     pointerEvents: 'none',
     textAnchor: 'middle',
+    fill: 'black',
   },
 
   givenDigit: {
@@ -96,17 +96,20 @@ export interface CellMouseEvent extends MouseEvent {
 
 export interface PuzzleProps extends StyledComponentProps<ClassKeyOfStyles<typeof styles>> {
   puzzleState?: PuzzleState;
+  tabIndex?: number;
   onCellClick?: (event: CellMouseEvent) => void;
   onCellDragStart?: (event: CellMouseEvent) => void;
   onCellDrag?: (event: CellMouseEvent) => void;
   onCellDragEnd?: (event: CellMouseEvent) => void;
+  onFocus?: (event: SyntheticEvent) => void;
+  onBlur?: (event: SyntheticEvent) => void;
   svgProps?: SVGProps<SVGSVGElement>;
 };
 
 export const Puzzle = (props: PuzzleProps) => {
   const {
     puzzleState = {},
-    onCellClick, onCellDragStart, onCellDrag, onCellDragEnd,
+    onCellClick, onCellDragStart, onCellDrag, onCellDragEnd, onFocus, onBlur, tabIndex = -1,
     svgProps
   } = props;
   const classes = useStyles(props);
@@ -144,6 +147,7 @@ export const Puzzle = (props: PuzzleProps) => {
   return (
     <svg
       className={classes.root} viewBox={[0, 0, 9*cellSize, 9*cellSize].join(' ')}
+      onFocus={onFocus} onBlur={onBlur} tabIndex={tabIndex}
       {...svgProps}
     >
       {
@@ -183,7 +187,7 @@ export const Puzzle = (props: PuzzleProps) => {
             const {x, y} = cornerPencilAnchors[index % cornerPencilAnchors.length];
             return (
               <text
-                key={`cornerPencil-${row}-${column}-${digit}`}
+                key={`cornerPencil-${row}-${column}-${index}`}
                 className={`${classes.digit} ${classes.cornerPencilDigit}`}
                 x={column*cellSize + x} y={row*cellSize + y} dy={textShift}
                 style={{fontSize: 0.25*cellSize}}
@@ -212,65 +216,59 @@ export const Puzzle = (props: PuzzleProps) => {
       />
       {
         (new Array(3)).fill(null).map((_, row) => (
-          <>
-          {
-            (new Array(3)).fill(null).map((_, column) => (
-              <rect
-                key={`box-${row}-${column}`} className={`${classes.rect} ${classes.boxRect}`}
-                x={column*cellSize*3} y={row*cellSize*3}
-                width={cellSize*3} height={cellSize*3}
-              />
-            ))
-          }
-          </>
+          (new Array(3)).fill(null).map((_, column) => (
+            <rect
+              key={`box-${row}-${column}`} className={`${classes.rect} ${classes.boxRect}`}
+              x={column*cellSize*3} y={row*cellSize*3}
+              width={cellSize*3} height={cellSize*3}
+            />
+          ))
         ))
       }
       {
         (new Array(9)).fill(null).map((_, row) => (
-          <>
-          {
-            (new Array(9)).fill(null).map((_, column) => (
-              <rect
-                key={`cell-${row}-${column}`} className={`${classes.rect} ${classes.cellRect}`}
-                x={column*cellSize} y={row*cellSize}
-                width={cellSize} height={cellSize}
-                onClick={onCellClick && (event => onCellClick({...event, row, column}))}
-                onMouseDown={event => {
-                  if(!isDragging) {
-                    setIsDragging(true);
-                    setDragStartEvent({...event, row, column});
-                  }
-                }}
-                onMouseMove={isDragging ? (event => {
-                  if(isDragging) {
-                    // If this is the first movement, send the drag start event.
-                    if(dragStartEvent) {
-                      setDragStartEvent(undefined);
-                      handleDragStart(dragStartEvent, row, column);
-                    }
-
-                    if(event.buttons === 0) {
-                      // If no button is pressed, end the drag event.
-                      setIsDragging(false);
-                      setDragStartEvent(undefined);
-                      handleDragEnd(event, row, column);
-                    } else {
-                      // Continue the drag event.
-                      handleDrag(event, row, column);
-                    }
-                  }
-                }) : undefined}
-                onMouseUp={event => {
-                  setIsDragging(false);
+          (new Array(9)).fill(null).map((_, column) => (
+            <rect
+              key={`cell-${row}-${column}`} className={`${classes.rect} ${classes.cellRect}`}
+              x={column*cellSize} y={row*cellSize}
+              width={cellSize} height={cellSize}
+              onClick={event => {
+                onCellClick && onCellClick({...event, row, column});
+              }}
+              onMouseDown={event => {
+                if(!isDragging) {
+                  setIsDragging(true);
+                  setDragStartEvent({...event, row, column});
+                }
+              }}
+              onMouseMove={isDragging ? (event => {
+                if(isDragging) {
+                  // If this is the first movement, send the drag start event.
                   if(dragStartEvent) {
                     setDragStartEvent(undefined);
-                    handleDragEnd(event, row, column);
+                    handleDragStart(dragStartEvent, row, column);
                   }
-                }}
-              />
-            ))
-          }
-          </>
+
+                  if(event.buttons === 0) {
+                    // If no button is pressed, end the drag event.
+                    setIsDragging(false);
+                    setDragStartEvent(undefined);
+                    handleDragEnd(event, row, column);
+                  } else {
+                    // Continue the drag event.
+                    handleDrag(event, row, column);
+                  }
+                }
+              }) : undefined}
+              onMouseUp={event => {
+                setIsDragging(false);
+                if(dragStartEvent) {
+                  setDragStartEvent(undefined);
+                  handleDragEnd(event, row, column);
+                }
+              }}
+            />
+          ))
         ))
       }
     </svg>

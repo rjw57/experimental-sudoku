@@ -60,6 +60,7 @@ export const App = () => {
           onCellClick={({row, column, ctrlKey}) => selectCell(row, column, ctrlKey)}
           onCellDragStart={({row, column, ctrlKey}) => selectCell(row, column, ctrlKey)}
           onCellDrag={({row, column }) => selectCell(row, column, true)}
+          onBlur={() => setSelection([])}
         />
       </header>
     </div>
