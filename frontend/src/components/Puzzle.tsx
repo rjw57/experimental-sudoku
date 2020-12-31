@@ -12,7 +12,19 @@ export interface PuzzleCell {
 export type PuzzleSelection = {row: number, column: number}[];
 
 const styles = (theme: Theme) => createStyles({
-  root: { },
+  root: {
+    '&:focus': {
+      outline: 'inherit',
+
+      '& $cursorRect': {
+        visibility: 'visible',
+      },
+
+      '& $selectionGroup': {
+        visibility: 'visible',
+      },
+    },
+  },
 
   rect: {
     fill: 'none',
@@ -60,8 +72,18 @@ const styles = (theme: Theme) => createStyles({
     fill: theme.palette.primary.main,
   },
 
-  selection: {
+  selectionRect: {
     fill: 'yellow',
+  },
+
+  selectionGroup: {
+    visibility: 'hidden',
+  },
+
+  cursorRect: {
+    visibility: 'hidden',
+    strokeWidth: 2.5,
+    strokeLinejoin: 'round',
   },
 });
 
@@ -73,9 +95,14 @@ export interface CellMouseEvent extends MouseEvent {
 };
 
 export interface PuzzleProps extends StyledComponentProps<ClassKeyOfStyles<typeof styles>> {
+  tabIndex?: number;
+
   selection?: PuzzleSelection;
   cells?: PuzzleCell[][];
-  tabIndex?: number;
+
+  cursorRow?: number;
+  cursorColumn?: number;
+
   onCellClick?: (event: CellMouseEvent) => void;
   onCellDragStart?: (event: CellMouseEvent) => void;
   onCellDrag?: (event: CellMouseEvent) => void;
@@ -83,6 +110,7 @@ export interface PuzzleProps extends StyledComponentProps<ClassKeyOfStyles<typeo
   onFocus?: (event: SyntheticEvent) => void;
   onBlur?: (event: SyntheticEvent) => void;
   onKeyDown?: (event: KeyboardEvent) => void
+
   svgProps?: SVGProps<SVGSVGElement>;
 };
 
@@ -90,6 +118,7 @@ export const Puzzle = (props: PuzzleProps) => {
   const {
     cells = [], selection = [],
     onCellClick, onCellDragStart, onCellDrag, onCellDragEnd, onFocus, onBlur, onKeyDown,
+    cursorRow = -1, cursorColumn = -1,
     tabIndex = -1,
     svgProps
   } = props;
@@ -106,6 +135,8 @@ export const Puzzle = (props: PuzzleProps) => {
   const handleDragEnd = (event: MouseEvent, row: number, column: number) => {
     onCellDragEnd && onCellDragEnd({...event, row, column});
   }
+
+  const showCursor = cursorRow >= 0 && cursorRow < 9 && cursorColumn >= 0 && cursorColumn < 9;
 
   const cellSize = 20;
   const textShift = '0.6ex';
@@ -126,15 +157,17 @@ export const Puzzle = (props: PuzzleProps) => {
       onKeyDown={onKeyDown} onFocus={onFocus} onBlur={onBlur} tabIndex={tabIndex}
       {...svgProps}
     >
-      {
-        selection.map(({ row, column }, index) => (
-          <rect
-            key={index} className={classes.selection}
-            x={column*cellSize} y={row*cellSize}
-            width={cellSize} height={cellSize}
-          />
-        ))
-      }
+      <g className={classes.selectionGroup}>
+        {
+          selection.map(({ row, column }, index) => (
+            <rect
+              key={index} className={classes.selectionRect}
+              x={column*cellSize} y={row*cellSize}
+              width={cellSize} height={cellSize}
+            />
+          ))
+        }
+      </g>
       {
         cells && cells.map((rowCells, row) => rowCells.map((cell, column) => {
           const { givenDigit, enteredDigit, cornerPencilDigits, centrePencilDigits } = cell;
@@ -256,6 +289,14 @@ export const Puzzle = (props: PuzzleProps) => {
             />
           ))
         ))
+      }
+      {
+        showCursor && (
+          <rect
+            className={[classes.rect, classes.cursorRect].join(' ')}
+            x={cursorColumn*cellSize} y={cursorRow*cellSize} width={cellSize} height={cellSize}
+          />
+        )
       }
     </svg>
   );

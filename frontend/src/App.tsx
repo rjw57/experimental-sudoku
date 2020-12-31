@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import './App.css';
 import {
   Button,
@@ -33,44 +33,73 @@ interface State {
 
 export const App = () => {
   const classes = useStyles();
-  const [{cellsHistory, selection}, dispatch] = usePuzzleController(INITIAL_PUZZLE_CELLS);
+  const [
+    {cellsHistory, selection, cursorRow, cursorColumn}, dispatch
+  ] = usePuzzleController(INITIAL_PUZZLE_CELLS);
   const [{mode}, setState] = useState<State>({ mode: 'digit' });
   const cells = cellsHistory[cellsHistory.length-1];
 
-  useEffect(() => {
-    const keyboardEventHandlerFunc = (event: KeyboardEvent) => {
-      const digit = '0123456789'.indexOf(event.key);
-      if(digit >= 1 && digit <= 9) {
-        setState(state => {
-          const { mode } = state;
-          switch(mode) {
-            case 'digit':
-              dispatch({ type: 'enterDigit', payload: { digit } });
-              break;
-            case 'centrePencil':
-              dispatch({ type: 'togglePencilMark', payload: { type: 'centre', digit } });
-              break;
-            case 'cornerPencil':
-              dispatch({ type: 'togglePencilMark', payload: { type: 'corner', digit } });
-              break;
-          }
-          return state;
-        });
-      }
+  const handlePuzzleOnKeyDown = useCallback((event: ReactKeyboardEvent) => {
+    const digit = '0123456789'.indexOf(event.key);
+    if(digit >= 1 && digit <= 9) {
+      setState(state => {
+        const { mode } = state;
+        switch(mode) {
+          case 'digit':
+            dispatch({ type: 'enterDigit', payload: { digit } });
+            break;
+          case 'centrePencil':
+            dispatch({ type: 'togglePencilMark', payload: { type: 'centre', digit } });
+            break;
+          case 'cornerPencil':
+            dispatch({ type: 'togglePencilMark', payload: { type: 'corner', digit } });
+            break;
+        }
+        return state;
+      });
+    }
 
+    switch(event.key) {
+      case 'ArrowUp':
+        dispatch({
+          type: 'setCursor', payload: {
+            row: -1, column: 0, relative: true, extendSelection: event.shiftKey, preserveSelection: true
+          }
+        });
+        break;
+      case 'ArrowDown':
+        dispatch({
+          type: 'setCursor', payload: {
+            row: 1, column: 0, relative: true, extendSelection: event.shiftKey,
+            preserveSelection: true
+          }
+        });
+        break;
+      case 'ArrowLeft':
+        dispatch({
+          type: 'setCursor', payload: {
+            row: 0, column: -1, relative: true, extendSelection: event.shiftKey,
+            preserveSelection: true
+          }
+        });
+        break;
+      case 'ArrowRight':
+        dispatch({
+          type: 'setCursor', payload: {
+            row: 0, column: 1, relative: true, extendSelection: event.shiftKey,
+            preserveSelection: true
+          }
+        });
+        break;
+      case 'Escape':
+        dispatch({ type: 'updateSelection', payload: { selection: [] } });
+        break;
+    }
+  }, [dispatch]);
+
+  useEffect(() => {
+    const globalKeyDownHandler = (event: KeyboardEvent) => {
       switch(event.key) {
-        case 'ArrowUp':
-          dispatch({ type: 'moveSelection', payload: { rowDelta: -1, columnDelta: 0 } });
-          break;
-        case 'ArrowDown':
-          dispatch({ type: 'moveSelection', payload: { rowDelta: 1, columnDelta: 0 } });
-          break;
-        case 'ArrowLeft':
-          dispatch({ type: 'moveSelection', payload: { rowDelta: 0, columnDelta: -1 } });
-          break;
-        case 'ArrowRight':
-          dispatch({ type: 'moveSelection', payload: { rowDelta: 0, columnDelta: 1 } });
-          break;
         case ' ':
           setState(({ mode, ...rest }) => {
             if(mode === 'digit') {
@@ -89,15 +118,11 @@ export const App = () => {
       }
     };
 
-    document.addEventListener('keydown', keyboardEventHandlerFunc);
+    document.addEventListener('keydown', globalKeyDownHandler);
     return () => {
-      document.removeEventListener('keydown', keyboardEventHandlerFunc);
+      document.removeEventListener('keydown', globalKeyDownHandler);
     }
   }, [setState, dispatch]);
-
-  const selectCell = useCallback((row: number, column: number, extend = false) => (
-    dispatch({ type: 'updateSelection', payload: { selection: [{row, column}], extend } })
-  ), [dispatch]);
 
   return (
     <div className="App">
@@ -107,18 +132,21 @@ export const App = () => {
             <Button
               variant={mode === 'digit' ? 'contained' : 'outlined'}
               onClick={() => setState(prev => ({...prev, mode: 'digit'}))}
+              tabIndex={2}
             >
               Digit
             </Button>
             <Button
               variant={mode === 'centrePencil' ? 'contained' : 'outlined'}
               onClick={() => setState(prev => ({...prev, mode: 'centrePencil'}))}
+              tabIndex={3}
             >
               Centre
             </Button>
             <Button
               variant={mode === 'cornerPencil' ? 'contained' : 'outlined'}
               onClick={() => setState(prev => ({...prev, mode: 'cornerPencil'}))}
+              tabIndex={4}
             >
               Corner
             </Button>
@@ -127,11 +155,18 @@ export const App = () => {
         <div>
           <Puzzle
             classes={{root: classes.puzzleRoot}}
-            selection={selection} cells={cells}
-            onCellClick={({row, column, ctrlKey}) => selectCell(row, column, ctrlKey)}
-            onCellDragStart={({row, column, ctrlKey}) => selectCell(row, column, ctrlKey)}
-            onCellDrag={({row, column }) => selectCell(row, column, true)}
-            onBlur={() => setState(state => ({...state, selection: []}))}
+            tabIndex={5}
+            selection={selection} cells={cells} cursorRow={cursorRow} cursorColumn={cursorColumn}
+            onKeyDown={handlePuzzleOnKeyDown}
+            onCellClick={({row, column, ctrlKey}) => dispatch({
+              type: 'setCursor', payload: { row, column, extendSelection: ctrlKey }
+            })}
+            onCellDragStart={({row, column, ctrlKey}) => dispatch({
+              type: 'setCursor', payload: { row, column, extendSelection: ctrlKey }
+            })}
+            onCellDrag={({row, column }) => dispatch({
+              type: 'setCursor', payload: { row, column, extendSelection: true }
+            })}
           />
         </div>
       </header>

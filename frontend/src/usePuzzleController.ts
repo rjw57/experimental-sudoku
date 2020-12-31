@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 import { PuzzleCell, PuzzleSelection } from './components/Puzzle';
 
 export interface PuzzleControllerState {
+  cursorRow: number;
+  cursorColumn: number;
   cellsHistory: PuzzleCell[][][];
   selection: PuzzleSelection;
 };
@@ -20,9 +22,15 @@ export interface PuzzleControllerTogglePencilMarkAction {
   payload: { type: 'corner' | 'centre', digit: number };
 };
 
-export interface PuzzleControllerMoveSelectionAction {
-  type: 'moveSelection';
-  payload: { rowDelta: number, columnDelta: number };
+export interface PuzzleControllerSetCursorAction {
+  type: 'setCursor';
+  payload: {
+    row: number,
+    column: number,
+    extendSelection?: boolean,
+    relative?: boolean,
+    preserveSelection?: boolean,
+  };
 };
 
 export interface PuzzleControllerUpdateSelectionAction {
@@ -31,9 +39,11 @@ export interface PuzzleControllerUpdateSelectionAction {
 };
 
 export type PuzzleControllerAction = (
-  PuzzleControllerUndoAction | PuzzleControllerEnterDigitAction |
-  PuzzleControllerTogglePencilMarkAction | PuzzleControllerMoveSelectionAction |
-  PuzzleControllerUpdateSelectionAction
+  PuzzleControllerUndoAction |
+  PuzzleControllerEnterDigitAction |
+  PuzzleControllerTogglePencilMarkAction |
+  PuzzleControllerUpdateSelectionAction |
+  PuzzleControllerSetCursorAction
 );
 
 export type PuzzleControllerDispatchFunction = (action: PuzzleControllerAction) => void;
@@ -41,23 +51,20 @@ export type PuzzleControllerDispatchFunction = (action: PuzzleControllerAction) 
 export const usePuzzleController =
   (initialCells: PuzzleCell[][] = []): [PuzzleControllerState, PuzzleControllerDispatchFunction] => {
     const [state, setState] = useState<PuzzleControllerState>({
-      cellsHistory: [initialCells], selection: [],
+      cellsHistory: [initialCells], selection: [], cursorRow: 0, cursorColumn: 0,
     });
 
     const dispatch = useCallback((action: PuzzleControllerAction) => {
-      // If the selection is exactly one cell, move it by the given number of rows and columns.
-      const moveSelection = (dr: number, dc: number) => setState(({ selection, ...rest }) => {
-        if(!selection || selection.length !== 1) { return { selection, ...rest }; }
-        const { row, column } = selection[0];
-        return { selection: [{ row: (9+row+dr) % 9, column: (9+column+dc) % 9 }], ...rest };
-      });
-
       // Update the cell(s) at the current selection.
       const setCell = (cellOrFunc: PuzzleCell | ((prev: PuzzleCell, prevState: PuzzleControllerState) => PuzzleCell)) => (
         setState(state => {
-          const { cellsHistory, selection } = state;
+          const { cellsHistory, selection, cursorRow, cursorColumn } = state;
+          const editTarget = [
+            ...selection.filter(d => d.row !== cursorRow || d.column !== cursorColumn),
+            { row: cursorRow, column: cursorColumn }
+          ];
           let cells = cellsHistory[cellsHistory.length - 1];
-          selection.forEach(({ row, column }) => {
+          editTarget.forEach(({ row, column }) => {
             // Make sure the cells array has enough rows.
             while(cells.length <= row) { cells = [...cells, []]; }
 
@@ -95,8 +102,22 @@ export const usePuzzleController =
             }
           });
           break;
-        case 'moveSelection':
-          moveSelection(action.payload.rowDelta, action.payload.columnDelta);
+        case 'setCursor':
+          setState(state => {
+            const {
+              row, column, extendSelection = false, relative = false, preserveSelection = false
+            } = action.payload;
+            const { cursorRow, cursorColumn, selection } = state;
+            const newRow = relative ? (9 + cursorRow + row) % 9 : row;
+            const newColumn = relative ? (9 + cursorColumn + column) % 9 : column;
+            const newSelection = extendSelection ? [
+              ...selection.filter(s => s.row !== cursorRow || s.column !== cursorColumn),
+              { row: cursorRow, column: cursorColumn },
+            ] : (preserveSelection ? selection : []);
+            return {
+              ...state, cursorRow: newRow, cursorColumn: newColumn, selection: newSelection
+            };
+          });
           break;
         case 'undo':
           setState(state => {
@@ -145,7 +166,11 @@ export const usePuzzleController =
       }
     }, [setState]);
 
-    return [state, dispatch];
+    return [{
+      ...state,
+      // The cursor is always part of the visible selection.
+      selection: [...state.selection, {row: state.cursorRow, column: state.cursorColumn}]
+    }, dispatch];
   };
 
 export default usePuzzleController;
