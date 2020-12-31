@@ -3,17 +3,10 @@ import { Theme, makeStyles, createStyles } from '@material-ui/core';
 import { StyledComponentProps, ClassKeyOfStyles } from '@material-ui/styles';
 
 export interface PuzzleCell {
+  givenDigit?: number;
   enteredDigit?: number;
   cornerPencilDigits?: number[];
   centrePencilDigits?: number[];
-};
-
-export interface PuzzleGivenState {
-  givenDigits?: {
-    row: number;
-    column: number;
-    digit: number;
-  }[];
 };
 
 export type PuzzleSelection = {row: number, column: number}[];
@@ -80,8 +73,6 @@ export interface CellMouseEvent extends MouseEvent {
 };
 
 export interface PuzzleProps extends StyledComponentProps<ClassKeyOfStyles<typeof styles>> {
-  givenState?: PuzzleGivenState;
-
   selection?: PuzzleSelection;
   cells?: PuzzleCell[][];
   tabIndex?: number;
@@ -97,7 +88,7 @@ export interface PuzzleProps extends StyledComponentProps<ClassKeyOfStyles<typeo
 
 export const Puzzle = (props: PuzzleProps) => {
   const {
-    cells = [], selection = [], givenState = {},
+    cells = [], selection = [],
     onCellClick, onCellDragStart, onCellDrag, onCellDragEnd, onFocus, onBlur, onKeyDown,
     tabIndex = -1,
     svgProps
@@ -145,22 +136,22 @@ export const Puzzle = (props: PuzzleProps) => {
         ))
       }
       {
-        givenState.givenDigits && givenState.givenDigits.map(
-          ({ row, column, digit }, index) => (
-            <text
-              key={index} className={[classes.digit, classes.givenDigit].join(' ')}
-              x={(0.5+column)*cellSize} y={(0.5+row)*cellSize} dy={textShift}
-              style={{fontSize: 0.8*cellSize}}
-            >{
-              digit
-            }</text>
-          )
-        )
-      }
-      {
         cells && cells.map((rowCells, row) => rowCells.map((cell, column) => {
-          const { enteredDigit, cornerPencilDigits, centrePencilDigits } = cell;
+          const { givenDigit, enteredDigit, cornerPencilDigits, centrePencilDigits } = cell;
           const index = row * 9 + column;
+
+          // A given digit trumps any entries.
+          if(typeof givenDigit !== 'undefined') {
+            return (
+              <text
+                key={index} className={[classes.digit, classes.givenDigit].join(' ')}
+                x={(0.5+column)*cellSize} y={(0.5+row)*cellSize} dy={textShift}
+                style={{fontSize: 0.8*cellSize}}
+              >{
+                givenDigit
+              }</text>
+            );
+          }
 
           // An entered digit trumps pencil marks.
           if(typeof enteredDigit !== 'undefined') {

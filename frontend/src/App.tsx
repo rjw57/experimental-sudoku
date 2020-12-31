@@ -1,8 +1,14 @@
 import { useCallback, useState, useEffect } from 'react';
 import './App.css';
-import { makeStyles, createStyles, Theme } from '@material-ui/core';
+import {
+  Button,
+  ButtonGroup,
+  Theme,
+  createStyles,
+  makeStyles,
+} from '@material-ui/core';
 
-import { Puzzle, PuzzleCell, PuzzleSelection, PuzzleGivenState } from './components';
+import { Puzzle, PuzzleCell, PuzzleSelection } from './components';
 
 const useStyles = makeStyles((theme: Theme) => createStyles({
   puzzleRoot: {
@@ -12,29 +18,28 @@ const useStyles = makeStyles((theme: Theme) => createStyles({
   },
 }));
 
-const PUZZLE_GIVEN_STATE: PuzzleGivenState = {
-  givenDigits: [
-    {row: 1, column: 2, digit: 7},
-    {row: 8, column: 8, digit: 1},
-  ],
-};
-
 const INITIAL_PUZZLE_CELLS: PuzzleCell[][] = [
   [],
-  [],
+  [{givenDigit: 5}],
   [{}, {}, {enteredDigit: 2}, {cornerPencilDigits: [1,2,3,4], centrePencilDigits: [1,2,3]}],
   [{enteredDigit: 2, centrePencilDigits: [1,3]}, {centrePencilDigits: [1,2,3]}],
 ];
 
+
+type Mode = 'digit' | 'cornerPencil' | 'centrePencil';
+
 interface State {
   cells: PuzzleCell[][];
   selection: PuzzleSelection;
+  mode: Mode;
 };
 
 export const App = () => {
   const classes = useStyles();
 
-  const [{cells, selection}, setState] = useState<State>({cells: INITIAL_PUZZLE_CELLS, selection: []});
+  const [{cells, selection, mode}, setState] = useState<State>({
+    cells: INITIAL_PUZZLE_CELLS, selection: [], mode: 'digit'
+  });
 
   useEffect(() => {
     // If the selection is exactly one cell, move it by the given number of rows and columns.
@@ -45,8 +50,10 @@ export const App = () => {
     });
 
     // Update the cell(s) at the current selection.
-    const setCell = (cellOrFunc: PuzzleCell | ((prev: PuzzleCell) => PuzzleCell)) => (
-      setState(({ cells, selection, ...rest }) => {
+    const setCell = (cellOrFunc: PuzzleCell | ((prev: PuzzleCell, prevState: State) => PuzzleCell)) => (
+      setState(state => {
+        let { cells } = state;
+        const { selection } = state;
         selection.forEach(({ row, column }) => {
           // Make sure the cells array has enough rows.
           while(cells.length <= row) { cells = [...cells, []]; }
@@ -55,7 +62,7 @@ export const App = () => {
           while(cells[row].length <= column) { cells[row] = [...cells[row], {}]; }
 
           const newCell = (typeof cellOrFunc === 'function')
-            ? cellOrFunc(cells[row][column]) : cellOrFunc
+            ? cellOrFunc(cells[row][column], state) : cellOrFunc
 
           cells = [
             ...cells.slice(0, row),
@@ -67,14 +74,41 @@ export const App = () => {
             ...cells.slice(row+1),
           ];
         });
-        return { cells, selection, ...rest };
+        return { ...state, cells };
       })
     );
 
     const keyboardEventHandlerFunc = (event: KeyboardEvent) => {
       const digit = '0123456789'.indexOf(event.key);
       if(digit >= 1 && digit <= 9) {
-        setCell({ enteredDigit: digit });
+        setCell((cell, { mode }) => {
+          // Don't modify givens.
+          if(cell.givenDigit) { return cell; }
+
+          switch(mode) {
+            case 'digit':
+              return { enteredDigit: digit };
+            case 'centrePencil':
+              return {
+                ...cell,
+                centrePencilDigits: [
+                  ...(cell.centrePencilDigits || []).filter(d => d !== digit),
+                  digit,
+                ].sort(),
+              };
+            case 'cornerPencil':
+              return {
+                ...cell,
+                cornerPencilDigits: [
+                  ...(cell.cornerPencilDigits || []).filter(d => d !== digit),
+                  digit,
+                ].sort(),
+              };
+          }
+
+          // Catch unhandled modes.
+          return cell;
+        });
       }
 
       switch(event.key) {
@@ -89,6 +123,18 @@ export const App = () => {
           break;
         case 'ArrowRight':
           moveSelection(0, 1);
+          break;
+        case ' ':
+          setState(({ mode, ...rest }) => {
+            if(mode === 'digit') {
+              mode = 'centrePencil';
+            } else if(mode === 'centrePencil') {
+              mode = 'cornerPencil';
+            } else if(mode === 'cornerPencil') {
+              mode = 'digit';
+            }
+            return { mode, ...rest };
+          });
           break;
       }
     };
@@ -115,14 +161,38 @@ export const App = () => {
   return (
     <div className="App">
       <header className="App-header">
-        <Puzzle
-          classes={{root: classes.puzzleRoot}}
-          selection={selection} givenState={PUZZLE_GIVEN_STATE} cells={cells}
-          onCellClick={({row, column, ctrlKey}) => selectCell(row, column, ctrlKey)}
-          onCellDragStart={({row, column, ctrlKey}) => selectCell(row, column, ctrlKey)}
-          onCellDrag={({row, column }) => selectCell(row, column, true)}
-          onBlur={() => setState(state => ({...state, selection: []}))}
-        />
+        <div>
+          <ButtonGroup color="primary">
+            <Button
+              variant={mode === 'digit' ? 'contained' : 'outlined'}
+              onClick={() => setState(prev => ({...prev, mode: 'digit'}))}
+            >
+              Digit
+            </Button>
+            <Button
+              variant={mode === 'centrePencil' ? 'contained' : 'outlined'}
+              onClick={() => setState(prev => ({...prev, mode: 'centrePencil'}))}
+            >
+              Centre
+            </Button>
+            <Button
+              variant={mode === 'cornerPencil' ? 'contained' : 'outlined'}
+              onClick={() => setState(prev => ({...prev, mode: 'cornerPencil'}))}
+            >
+              Corner
+            </Button>
+          </ButtonGroup>
+        </div>
+        <div>
+          <Puzzle
+            classes={{root: classes.puzzleRoot}}
+            selection={selection} cells={cells}
+            onCellClick={({row, column, ctrlKey}) => selectCell(row, column, ctrlKey)}
+            onCellDragStart={({row, column, ctrlKey}) => selectCell(row, column, ctrlKey)}
+            onCellDrag={({row, column }) => selectCell(row, column, true)}
+            onBlur={() => setState(state => ({...state, selection: []}))}
+          />
+        </div>
       </header>
     </div>
   );
