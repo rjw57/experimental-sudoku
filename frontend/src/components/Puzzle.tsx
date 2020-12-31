@@ -2,36 +2,21 @@ import { useState, SVGProps, MouseEvent, KeyboardEvent, SyntheticEvent } from 'r
 import { Theme, makeStyles, createStyles } from '@material-ui/core';
 import { StyledComponentProps, ClassKeyOfStyles } from '@material-ui/styles';
 
-export interface PuzzleState {
+export interface PuzzleCell {
+  enteredDigit?: number;
+  cornerPencilDigits?: number[];
+  centrePencilDigits?: number[];
+};
+
+export interface PuzzleGivenState {
   givenDigits?: {
     row: number;
     column: number;
     digit: number;
   }[];
-
-  enteredDigits?: {
-    row: number;
-    column: number;
-    digit: number;
-  }[];
-
-  centrePencils?: {
-    row: number;
-    column: number;
-    digits: number[];
-  }[];
-
-  cornerPencils?: {
-    row: number;
-    column: number;
-    digits: number[];
-  }[];
-
-  selection?: {
-    row: number;
-    column: number;
-  }[];
 };
+
+export type PuzzleSelection = {row: number, column: number}[];
 
 const styles = (theme: Theme) => createStyles({
   root: { },
@@ -95,7 +80,10 @@ export interface CellMouseEvent extends MouseEvent {
 };
 
 export interface PuzzleProps extends StyledComponentProps<ClassKeyOfStyles<typeof styles>> {
-  puzzleState?: PuzzleState;
+  givenState?: PuzzleGivenState;
+
+  selection?: PuzzleSelection;
+  cells?: PuzzleCell[][];
   tabIndex?: number;
   onCellClick?: (event: CellMouseEvent) => void;
   onCellDragStart?: (event: CellMouseEvent) => void;
@@ -109,7 +97,7 @@ export interface PuzzleProps extends StyledComponentProps<ClassKeyOfStyles<typeo
 
 export const Puzzle = (props: PuzzleProps) => {
   const {
-    puzzleState = {},
+    cells = [], selection = [], givenState = {},
     onCellClick, onCellDragStart, onCellDrag, onCellDragEnd, onFocus, onBlur, onKeyDown,
     tabIndex = -1,
     svgProps
@@ -141,11 +129,6 @@ export const Puzzle = (props: PuzzleProps) => {
     { x: (5/6) * cellSize, y: (5/6) * cellSize },
   ];
 
-  const {
-    givenDigits = [], enteredDigits = [], centrePencils = [], cornerPencils = [],
-    selection = [],
-  } = puzzleState;
-
   return (
     <svg
       className={classes.root} viewBox={[0, 0, 9*cellSize, 9*cellSize].join(' ')}
@@ -153,74 +136,84 @@ export const Puzzle = (props: PuzzleProps) => {
       {...svgProps}
     >
       {
-        selection.map(({ row, column }) => (
+        selection.map(({ row, column }, index) => (
           <rect
-            key={`selection-${row}-${column}`} className={classes.selection}
+            key={index} className={classes.selection}
             x={column*cellSize} y={row*cellSize}
             width={cellSize} height={cellSize}
           />
         ))
       }
       {
-        givenDigits.map(({ row, column, digit }) => (
-          <text
-            key={`given-${row}-${column}`} className={`${classes.digit} ${classes.givenDigit}`}
-            x={(0.5+column)*cellSize} y={(0.5+row)*cellSize} dy={textShift}
-            style={{fontSize: 0.8*cellSize}}
-          >{
-            digit
-          }</text>
-        ))
+        givenState.givenDigits && givenState.givenDigits.map(
+          ({ row, column, digit }, index) => (
+            <text
+              key={index} className={[classes.digit, classes.givenDigit].join(' ')}
+              x={(0.5+column)*cellSize} y={(0.5+row)*cellSize} dy={textShift}
+              style={{fontSize: 0.8*cellSize}}
+            >{
+              digit
+            }</text>
+          )
+        )
       }
       {
-        enteredDigits.map(({ row, column, digit }) => (
-          <text
-            key={`entered-${row}-${column}`} className={`${classes.digit} ${classes.enteredDigit}`}
-            x={(0.5+column)*cellSize} y={(0.5+row)*cellSize} dy={textShift}
-            style={{fontSize: 0.8*cellSize}}
-          >{
-            digit
-          }</text>
-        ))
-      }
-      {
-        cornerPencils.map(({ row, column, digits }) => (
-          digits.map((digit, index) => {
-            const {x, y} = cornerPencilAnchors[index % cornerPencilAnchors.length];
+        cells && cells.map((rowCells, row) => rowCells.map((cell, column) => {
+          const { enteredDigit, cornerPencilDigits, centrePencilDigits } = cell;
+          const index = row * 9 + column;
+
+          // An entered digit trumps pencil marks.
+          if(typeof enteredDigit !== 'undefined') {
             return (
               <text
-                key={`cornerPencil-${row}-${column}-${index}`}
-                className={`${classes.digit} ${classes.cornerPencilDigit}`}
-                x={column*cellSize + x} y={row*cellSize + y} dy={textShift}
-                style={{fontSize: 0.25*cellSize}}
+                key={index} className={[classes.digit, classes.enteredDigit].join(' ')}
+                x={(0.5+column)*cellSize} y={(0.5+row)*cellSize} dy={textShift}
+                style={{fontSize: 0.8*cellSize}}
               >{
-                digit
+                enteredDigit
               }</text>
             );
-          })
-        ))
-      }
-      {
-        centrePencils.map(({ row, column, digits }) => (
-          <text
-            key={`centrePencil-${row}-${column}`}
-            className={`${classes.digit} ${classes.centrePencilDigit}`}
-            x={(0.5+column)*cellSize} y={(0.5+row)*cellSize} dy={textShift}
-            style={{fontSize: digits.length >= 6 ? 0.2*cellSize : 0.25*cellSize}}
-          >{
-            digits.join('')
-          }</text>
-        ))
+          }
+
+          return <g key={index}>
+            {
+              centrePencilDigits && (
+                <text
+                  className={[classes.digit, classes.centrePencilDigit].join(' ')}
+                  x={(0.5+column)*cellSize} y={(0.5+row)*cellSize} dy={textShift}
+                  style={{fontSize: centrePencilDigits.length >= 6 ? 0.2*cellSize : 0.25*cellSize}}
+                >{
+                  centrePencilDigits.join('')
+                }</text>
+              )
+            }
+            {
+              cornerPencilDigits && cornerPencilDigits.map((digit, index) => {
+                const {x, y} = cornerPencilAnchors[index % cornerPencilAnchors.length];
+                return (
+                  <text
+                    key={index}
+                    className={[classes.digit, classes.cornerPencilDigit].join(' ')}
+                    x={column*cellSize + x} y={row*cellSize + y} dy={textShift}
+                    style={{fontSize: 0.25*cellSize}}
+                  >{
+                    digit
+                  }</text>
+                );
+              })
+            }
+          </g>;
+        }))
       }
       <rect
-        className={`${classes.rect} ${classes.outerRect}`}
+        className={[classes.rect, classes.outerRect].join(' ')}
         x={0} y={0} width={9*cellSize} height={9*cellSize}
       />
       {
         (new Array(3)).fill(null).map((_, row) => (
           (new Array(3)).fill(null).map((_, column) => (
             <rect
-              key={`box-${row}-${column}`} className={`${classes.rect} ${classes.boxRect}`}
+              key={row*9 + column} className={[classes.rect, classes.boxRect].join(' ')}
               x={column*cellSize*3} y={row*cellSize*3}
               width={cellSize*3} height={cellSize*3}
             />
@@ -231,7 +224,7 @@ export const Puzzle = (props: PuzzleProps) => {
         (new Array(9)).fill(null).map((_, row) => (
           (new Array(9)).fill(null).map((_, column) => (
             <rect
-              key={`cell-${row}-${column}`} className={`${classes.rect} ${classes.cellRect}`}
+              key={row*9 + column} className={[classes.rect, classes.cellRect].join(' ')}
               x={column*cellSize} y={row*cellSize}
               width={cellSize} height={cellSize}
               onClick={event => {

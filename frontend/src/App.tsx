@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect } from 'react';
 import './App.css';
 import { makeStyles, createStyles, Theme } from '@material-ui/core';
 
-import { Puzzle, PuzzleState } from './components';
+import { Puzzle, PuzzleCell, PuzzleSelection, PuzzleGivenState } from './components';
 
 const useStyles = makeStyles((theme: Theme) => createStyles({
   puzzleRoot: {
@@ -12,67 +12,69 @@ const useStyles = makeStyles((theme: Theme) => createStyles({
   },
 }));
 
-const INITIAL_PUZZLE_STATE: PuzzleState = {
+const PUZZLE_GIVEN_STATE: PuzzleGivenState = {
   givenDigits: [
     {row: 1, column: 2, digit: 7},
+    {row: 8, column: 8, digit: 1},
   ],
-  enteredDigits: [
-    {row: 2, column: 8, digit: 1},
-    {row: 3, column: 1, digit: 2},
-    {row: 2, column: 2, digit: 3},
-    {row: 4, column: 8, digit: 4},
-    {row: 6, column: 7, digit: 5},
-    {row: 7, column: 6, digit: 6},
-    {row: 8, column: 2, digit: 7},
-    {row: 2, column: 6, digit: 8},
-    {row: 1, column: 0, digit: 9},
-  ],
-  centrePencils: [
-    {row: 2, column: 4, digits: [1, 2, 3, 4, 5, 6]},
-    {row: 3, column: 4, digits: [1, 2, 3]},
-  ],
-  cornerPencils: [
-    {row: 0, column: 8, digits: [1, 2, 3, 4, 5, 6]},
-    {row: 3, column: 7, digits: [1, 2, 3]},
-  ],
+};
+
+const INITIAL_PUZZLE_CELLS: PuzzleCell[][] = [
+  [],
+  [],
+  [{}, {}, {enteredDigit: 2}, {cornerPencilDigits: [1,2,3,4], centrePencilDigits: [1,2,3]}],
+  [{enteredDigit: 2, centrePencilDigits: [1,3]}, {centrePencilDigits: [1,2,3]}],
+];
+
+interface State {
+  cells: PuzzleCell[][];
+  selection: PuzzleSelection;
 };
 
 export const App = () => {
   const classes = useStyles();
 
-  const [puzzleState, setPuzzleState] = useState<PuzzleState>(INITIAL_PUZZLE_STATE);
-  const { selection = [] } = puzzleState;
-
-  const setSelection = useCallback(
-    (valOrFunc: PuzzleState["selection"] | ((prev: PuzzleState["selection"]) => PuzzleState["selection"])) => {
-      if(typeof valOrFunc === 'function') {
-        return setPuzzleState(prev => ({...prev, selection: valOrFunc(prev.selection)}));
-      } else {
-        return setPuzzleState(prev => ({...prev, selection: valOrFunc}));
-      }
-    }, [setPuzzleState]
-  );
-
-  const setDigit = useCallback((digit: number) => setPuzzleState(puzzleState => {
-    let newEnteredDigits = [...(puzzleState.enteredDigits || [])];
-    (puzzleState.selection || []).forEach(({ row, column }) => {
-      newEnteredDigits = newEnteredDigits.filter(elem => elem.row !== row || elem.column !== column);
-      newEnteredDigits.push({ row, column, digit });
-    });
-    return {...puzzleState, enteredDigits: newEnteredDigits};
-  }), [setPuzzleState]);
+  const [{cells, selection}, setState] = useState<State>({cells: INITIAL_PUZZLE_CELLS, selection: []});
 
   useEffect(() => {
-    const moveSelection = (dr: number, dc: number) => setSelection(prev => {
-      if(!prev || prev.length !== 1) { return; }
-      const { row, column } = prev[0];
-      return [{ row: (9+row+dr) % 9, column: (9+column+dc) % 9 }];
+    // If the selection is exactly one cell, move it by the given number of rows and columns.
+    const moveSelection = (dr: number, dc: number) => setState(({ selection, ...rest }) => {
+      if(!selection || selection.length !== 1) { return { selection, ...rest }; }
+      const { row, column } = selection[0];
+      return { selection: [{ row: (9+row+dr) % 9, column: (9+column+dc) % 9 }], ...rest };
     });
 
-    const handlerFunc = (event: KeyboardEvent) => {
+    // Update the cell(s) at the current selection.
+    const setCell = (cellOrFunc: PuzzleCell | ((prev: PuzzleCell) => PuzzleCell)) => (
+      setState(({ cells, selection, ...rest }) => {
+        selection.forEach(({ row, column }) => {
+          // Make sure the cells array has enough rows.
+          while(cells.length <= row) { cells = [...cells, []]; }
+
+          // Make sure the row array has enough cells.
+          while(cells[row].length <= column) { cells[row] = [...cells[row], {}]; }
+
+          const newCell = (typeof cellOrFunc === 'function')
+            ? cellOrFunc(cells[row][column]) : cellOrFunc
+
+          cells = [
+            ...cells.slice(0, row),
+            [
+              ...cells[row].slice(0, column),
+              newCell,
+              ...cells[row].slice(column+1),
+            ],
+            ...cells.slice(row+1),
+          ];
+        });
+        return { cells, selection, ...rest };
+      })
+    );
+
+    const keyboardEventHandlerFunc = (event: KeyboardEvent) => {
       const digit = '0123456789'.indexOf(event.key);
       if(digit >= 1 && digit <= 9) {
-        setDigit(digit);
+        setCell({ enteredDigit: digit });
       }
 
       switch(event.key) {
@@ -90,33 +92,36 @@ export const App = () => {
           break;
       }
     };
+    document.addEventListener('keydown', keyboardEventHandlerFunc);
 
-    document.addEventListener('keydown', handlerFunc);
-    return () => { document.removeEventListener('keydown', handlerFunc); }
-  }, [setSelection, setDigit, setPuzzleState]);
+    return () => { document.removeEventListener('keydown', keyboardEventHandlerFunc); }
+  }, [setState]);
 
   const selectCell = useCallback(
     (row: number, column: number, extend = false) => {
       if(!extend) {
-        setSelection([{row, column}]);
+        setState(({ selection, ...rest }) => ({ selection: [{row, column}], ...rest }));
       } else {
-        setSelection(prev => ([
-          {row, column},
-          ...(prev ? prev.filter(s => s.row !== row || s.column !== column) : [])
-        ]));
+        setState(({ selection, ...rest }) => ({
+          selection: [
+            {row, column}, ...selection.filter(s => s.row !== row || s.column !== column)
+          ],
+          ...rest
+        }))
       }
-    }, [setSelection]
+    }, [setState]
   );
 
   return (
     <div className="App">
       <header className="App-header">
         <Puzzle
-          classes={{root: classes.puzzleRoot}} puzzleState={{...puzzleState, selection}}
+          classes={{root: classes.puzzleRoot}}
+          selection={selection} givenState={PUZZLE_GIVEN_STATE} cells={cells}
           onCellClick={({row, column, ctrlKey}) => selectCell(row, column, ctrlKey)}
           onCellDragStart={({row, column, ctrlKey}) => selectCell(row, column, ctrlKey)}
           onCellDrag={({row, column }) => selectCell(row, column, true)}
-          onBlur={() => setSelection([])}
+          onBlur={() => setState(state => ({...state, selection: []}))}
         />
       </header>
     </div>
