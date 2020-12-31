@@ -8,7 +8,8 @@ import {
   makeStyles,
 } from '@material-ui/core';
 
-import { Puzzle, PuzzleCell, PuzzleSelection } from './components';
+import { Puzzle, PuzzleCell } from './components';
+import usePuzzleController from './usePuzzleController';
 
 const useStyles = makeStyles((theme: Theme) => createStyles({
   puzzleRoot: {
@@ -21,108 +22,54 @@ const useStyles = makeStyles((theme: Theme) => createStyles({
 const INITIAL_PUZZLE_CELLS: PuzzleCell[][] = [
   [],
   [{givenDigit: 5}],
-  [{}, {}, {enteredDigit: 2}, {cornerPencilDigits: [1,2,3,4], centrePencilDigits: [1,2,3]}],
-  [{enteredDigit: 2, centrePencilDigits: [1,3]}, {centrePencilDigits: [1,2,3]}],
 ];
 
 
 type Mode = 'digit' | 'cornerPencil' | 'centrePencil';
 
 interface State {
-  cells: PuzzleCell[][];
-  selection: PuzzleSelection;
   mode: Mode;
 };
 
 export const App = () => {
   const classes = useStyles();
-
-  const [{cells, selection, mode}, setState] = useState<State>({
-    cells: INITIAL_PUZZLE_CELLS, selection: [], mode: 'digit'
-  });
+  const [{cellsHistory, selection}, dispatch] = usePuzzleController(INITIAL_PUZZLE_CELLS);
+  const [{mode}, setState] = useState<State>({ mode: 'digit' });
+  const cells = cellsHistory[cellsHistory.length-1];
 
   useEffect(() => {
-    // If the selection is exactly one cell, move it by the given number of rows and columns.
-    const moveSelection = (dr: number, dc: number) => setState(({ selection, ...rest }) => {
-      if(!selection || selection.length !== 1) { return { selection, ...rest }; }
-      const { row, column } = selection[0];
-      return { selection: [{ row: (9+row+dr) % 9, column: (9+column+dc) % 9 }], ...rest };
-    });
-
-    // Update the cell(s) at the current selection.
-    const setCell = (cellOrFunc: PuzzleCell | ((prev: PuzzleCell, prevState: State) => PuzzleCell)) => (
-      setState(state => {
-        let { cells } = state;
-        const { selection } = state;
-        selection.forEach(({ row, column }) => {
-          // Make sure the cells array has enough rows.
-          while(cells.length <= row) { cells = [...cells, []]; }
-
-          // Make sure the row array has enough cells.
-          while(cells[row].length <= column) { cells[row] = [...cells[row], {}]; }
-
-          const newCell = (typeof cellOrFunc === 'function')
-            ? cellOrFunc(cells[row][column], state) : cellOrFunc
-
-          cells = [
-            ...cells.slice(0, row),
-            [
-              ...cells[row].slice(0, column),
-              newCell,
-              ...cells[row].slice(column+1),
-            ],
-            ...cells.slice(row+1),
-          ];
-        });
-        return { ...state, cells };
-      })
-    );
-
     const keyboardEventHandlerFunc = (event: KeyboardEvent) => {
       const digit = '0123456789'.indexOf(event.key);
       if(digit >= 1 && digit <= 9) {
-        setCell((cell, { mode }) => {
-          // Don't modify givens.
-          if(cell.givenDigit) { return cell; }
-
+        setState(state => {
+          const { mode } = state;
           switch(mode) {
             case 'digit':
-              return { enteredDigit: digit };
+              dispatch({ type: 'enterDigit', payload: { digit } });
+              break;
             case 'centrePencil':
-              return {
-                ...cell,
-                centrePencilDigits: [
-                  ...(cell.centrePencilDigits || []).filter(d => d !== digit),
-                  digit,
-                ].sort(),
-              };
+              dispatch({ type: 'togglePencilMark', payload: { type: 'centre', digit } });
+              break;
             case 'cornerPencil':
-              return {
-                ...cell,
-                cornerPencilDigits: [
-                  ...(cell.cornerPencilDigits || []).filter(d => d !== digit),
-                  digit,
-                ].sort(),
-              };
+              dispatch({ type: 'togglePencilMark', payload: { type: 'corner', digit } });
+              break;
           }
-
-          // Catch unhandled modes.
-          return cell;
+          return state;
         });
       }
 
       switch(event.key) {
         case 'ArrowUp':
-          moveSelection(-1, 0);
+          dispatch({ type: 'moveSelection', payload: { rowDelta: -1, columnDelta: 0 } });
           break;
         case 'ArrowDown':
-          moveSelection(1, 0);
+          dispatch({ type: 'moveSelection', payload: { rowDelta: 1, columnDelta: 0 } });
           break;
         case 'ArrowLeft':
-          moveSelection(0, -1);
+          dispatch({ type: 'moveSelection', payload: { rowDelta: 0, columnDelta: -1 } });
           break;
         case 'ArrowRight':
-          moveSelection(0, 1);
+          dispatch({ type: 'moveSelection', payload: { rowDelta: 0, columnDelta: 1 } });
           break;
         case ' ':
           setState(({ mode, ...rest }) => {
@@ -136,27 +83,21 @@ export const App = () => {
             return { mode, ...rest };
           });
           break;
+        case 'z':
+          event.ctrlKey && dispatch({ type: 'undo' });
+          break;
       }
     };
+
     document.addEventListener('keydown', keyboardEventHandlerFunc);
+    return () => {
+      document.removeEventListener('keydown', keyboardEventHandlerFunc);
+    }
+  }, [setState, dispatch]);
 
-    return () => { document.removeEventListener('keydown', keyboardEventHandlerFunc); }
-  }, [setState]);
-
-  const selectCell = useCallback(
-    (row: number, column: number, extend = false) => {
-      if(!extend) {
-        setState(({ selection, ...rest }) => ({ selection: [{row, column}], ...rest }));
-      } else {
-        setState(({ selection, ...rest }) => ({
-          selection: [
-            {row, column}, ...selection.filter(s => s.row !== row || s.column !== column)
-          ],
-          ...rest
-        }))
-      }
-    }, [setState]
-  );
+  const selectCell = useCallback((row: number, column: number, extend = false) => (
+    dispatch({ type: 'updateSelection', payload: { selection: [{row, column}], extend } })
+  ), [dispatch]);
 
   return (
     <div className="App">
