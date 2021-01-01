@@ -63,7 +63,8 @@ export const App = () => {
       case 'ArrowUp':
         dispatch({
           type: 'setCursor', payload: {
-            row: -1, column: 0, relative: true, extendSelection: event.shiftKey, preserveSelection: true
+            row: -1, column: 0, relative: true, extendSelection: event.shiftKey,
+            preserveSelection: event.ctrlKey
           }
         });
         break;
@@ -71,7 +72,7 @@ export const App = () => {
         dispatch({
           type: 'setCursor', payload: {
             row: 1, column: 0, relative: true, extendSelection: event.shiftKey,
-            preserveSelection: true
+            preserveSelection: event.ctrlKey
           }
         });
         break;
@@ -79,7 +80,7 @@ export const App = () => {
         dispatch({
           type: 'setCursor', payload: {
             row: 0, column: -1, relative: true, extendSelection: event.shiftKey,
-            preserveSelection: true
+            preserveSelection: event.ctrlKey
           }
         });
         break;
@@ -87,7 +88,7 @@ export const App = () => {
         dispatch({
           type: 'setCursor', payload: {
             row: 0, column: 1, relative: true, extendSelection: event.shiftKey,
-            preserveSelection: true
+            preserveSelection: event.ctrlKey
           }
         });
         break;

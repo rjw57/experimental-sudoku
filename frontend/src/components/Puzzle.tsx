@@ -33,7 +33,7 @@ const styles = (theme: Theme) => createStyles({
   },
 
   outerRect: {
-    strokeWidth: 3,
+    strokeWidth: 4,
   },
 
   cellRect: {
@@ -46,7 +46,7 @@ const styles = (theme: Theme) => createStyles({
   },
 
   boxRect: {
-    strokeWidth: 1.5,
+    strokeWidth: 2,
   },
 
   digit: {
@@ -73,7 +73,8 @@ const styles = (theme: Theme) => createStyles({
   },
 
   selectionRect: {
-    fill: 'yellow',
+    fill: theme.palette.primary.light,
+    fillOpacity: 0.2,
   },
 
   selectionGroup: {
@@ -83,7 +84,7 @@ const styles = (theme: Theme) => createStyles({
   cursorRect: {
     visibility: 'hidden',
     strokeWidth: 0,
-    outline: 'black dotted 1px',
+    outline: 'black dotted 2px',
   },
 });
 
@@ -138,7 +139,7 @@ export const Puzzle = (props: PuzzleProps) => {
 
   const showCursor = cursorRow >= 0 && cursorRow < 9 && cursorColumn >= 0 && cursorColumn < 9;
 
-  const cellSize = 20;
+  const cellSize = 48;
   const textShift = '0.6ex';
   const cornerPencilAnchors = [
     { x: (1/6) * cellSize, y: (1/6) * cellSize },
