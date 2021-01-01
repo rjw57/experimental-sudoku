@@ -94,6 +94,9 @@ export const App = () => {
       case 'Escape':
         dispatch({ type: 'updateSelection', payload: { selection: [] } });
         break;
+      case 'Backspace':
+        dispatch({ type: 'clearCell', payload: { } });
+        break;
     }
   }, [dispatch]);
 

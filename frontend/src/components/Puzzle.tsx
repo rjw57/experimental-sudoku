@@ -82,8 +82,8 @@ const styles = (theme: Theme) => createStyles({
 
   cursorRect: {
     visibility: 'hidden',
-    strokeWidth: 2.5,
-    strokeLinejoin: 'round',
+    strokeWidth: 0,
+    outline: 'black dotted 1px',
   },
 });
 

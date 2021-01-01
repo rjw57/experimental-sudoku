@@ -22,6 +22,15 @@ export interface PuzzleControllerTogglePencilMarkAction {
   payload: { type: 'corner' | 'centre', digit: number };
 };
 
+export interface PuzzleControllerClearCellAction {
+  type: 'clearCell';
+  payload: {
+    retainEntered?: boolean,
+    retainCornerPencils?: boolean,
+    retainCentrePencils?: boolean,
+  }
+}
+
 export interface PuzzleControllerSetCursorAction {
   type: 'setCursor';
   payload: {
@@ -43,7 +52,8 @@ export type PuzzleControllerAction = (
   PuzzleControllerEnterDigitAction |
   PuzzleControllerTogglePencilMarkAction |
   PuzzleControllerUpdateSelectionAction |
-  PuzzleControllerSetCursorAction
+  PuzzleControllerSetCursorAction |
+  PuzzleControllerClearCellAction
 );
 
 export type PuzzleControllerDispatchFunction = (action: PuzzleControllerAction) => void;
@@ -124,6 +134,17 @@ export const usePuzzleController =
             const { cellsHistory } = state;
             if(cellsHistory.length < 2) { return state; }
             return { ...state, cellsHistory: cellsHistory.slice(0, -1) };
+          });
+          break;
+        case 'clearCell':
+          setCell(cell => {
+            const {
+              retainEntered = false, retainCornerPencils = false, retainCentrePencils = false
+            } = action.payload;
+            if(!retainEntered) { delete cell.enteredDigit; }
+            if(!retainCornerPencils) { cell.cornerPencilDigits = []; }
+            if(!retainCentrePencils) { cell.centrePencilDigits = []; }
+            return cell;
           });
           break;
         case 'enterDigit':
