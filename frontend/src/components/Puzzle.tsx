@@ -84,7 +84,7 @@ const styles = (theme: Theme) => createStyles({
   cursorRect: {
     visibility: 'hidden',
     strokeWidth: 0,
-    outline: 'black dotted 2px',
+    outline: 'black dotted 1.5px',
   },
 });
 
@@ -100,6 +100,8 @@ export interface PuzzleProps extends StyledComponentProps<ClassKeyOfStyles<typeo
 
   selection?: PuzzleSelection;
   cells?: PuzzleCell[][];
+
+  cellSize?: number;
 
   cursorRow?: number;
   cursorColumn?: number;
@@ -117,7 +119,7 @@ export interface PuzzleProps extends StyledComponentProps<ClassKeyOfStyles<typeo
 
 export const Puzzle = (props: PuzzleProps) => {
   const {
-    cells = [], selection = [],
+    cells = [], selection = [], cellSize = 48,
     onCellClick, onCellDragStart, onCellDrag, onCellDragEnd, onFocus, onBlur, onKeyDown,
     cursorRow = -1, cursorColumn = -1,
     tabIndex = -1,
@@ -139,7 +141,6 @@ export const Puzzle = (props: PuzzleProps) => {
 
   const showCursor = cursorRow >= 0 && cursorRow < 9 && cursorColumn >= 0 && cursorColumn < 9;
 
-  const cellSize = 48;
   const textShift = '0.6ex';
   const cornerPencilAnchors = [
     { x: (1/6) * cellSize, y: (1/6) * cellSize },

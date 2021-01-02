@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useMeasure } from 'react-use';
 import './App.css';
 import {
   Button,
@@ -64,6 +65,8 @@ export const App = () => {
   const [{mode}, setState] = useState<State>({ mode: 'digit' });
   const cells = cellsHistory[cellsHistory.length-1];
   const solved = useMemo(() => checkSudoku(cells), [cells]);
+  const [puzzleDivRef, { width, height }] = useMeasure<HTMLDivElement>();
+  const cellSize = Math.min(width, height) / 9;
 
   const handlePuzzleOnKeyDown = useCallback((event: ReactKeyboardEvent) => {
     const digit = '0123456789'.indexOf(event.key);
@@ -202,10 +205,10 @@ export const App = () => {
             </Button>
           </ButtonGroup>
         </div>
-        <div>
+        <div ref={puzzleDivRef}>
           <Puzzle
             classes={{root: classes.puzzleRoot}}
-            tabIndex={5}
+            tabIndex={5} cellSize={cellSize}
             selection={selection} cells={cells} cursorRow={cursorRow} cursorColumn={cursorColumn}
             onKeyDown={handlePuzzleOnKeyDown}
             onCellClick={({row, column, ctrlKey}) => dispatch({
