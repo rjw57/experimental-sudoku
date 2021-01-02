@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback, KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useState, useEffect, useMemo, useCallback, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import './App.css';
 import {
   Button,
   ButtonGroup,
+  Checkbox,
+  FormControlLabel,
   Theme,
   createStyles,
   makeStyles,
@@ -19,16 +21,39 @@ const useStyles = makeStyles((theme: Theme) => createStyles({
   },
 }));
 
-const INITIAL_PUZZLE_CELLS: PuzzleCell[][] = [
-  [],
-  [{givenDigit: 5}],
-];
+const INITIAL_PUZZLE_CELLS: PuzzleCell[][] = [];
 
-
-type Mode = 'digit' | 'cornerPencil' | 'centrePencil';
+type Mode = 'digit' | 'cornerPencil' | 'centrePencil' | 'given';
 
 interface State {
   mode: Mode;
+};
+
+const checkSudoku = (cells: PuzzleCell[][]) => {
+  // Solved sudokus must be 9x9
+  if(cells.length !== 9 || !cells.every(r => r.length === 9)) {
+    return false;
+  }
+
+  // Each row, column and box must have the digits 1 to 9
+  for(let i=0; i<9; i++) {
+    const row = cells[i].map(c => c.enteredDigit || c.givenDigit);
+    const col = cells.map(r => r[i].enteredDigit || r[i].givenDigit);
+    const box = [];
+    for(let r=0; r<3; r++) {
+      for(let c=0; c<3; c++) {
+        const cell = cells[r+(i-(i%3))][c+3*(i%3)];
+        box.push(cell.enteredDigit || cell.givenDigit);
+      }
+    }
+    for(let d=1; d<=9; d++) {
+      if(row.indexOf(d) === -1) { return false; }
+      if(col.indexOf(d) === -1) { return false; }
+      if(box.indexOf(d) === -1) { return false; }
+    }
+  }
+
+  return true;
 };
 
 export const App = () => {
@@ -38,6 +63,7 @@ export const App = () => {
   ] = usePuzzleController(INITIAL_PUZZLE_CELLS);
   const [{mode}, setState] = useState<State>({ mode: 'digit' });
   const cells = cellsHistory[cellsHistory.length-1];
+  const solved = useMemo(() => checkSudoku(cells), [cells]);
 
   const handlePuzzleOnKeyDown = useCallback((event: ReactKeyboardEvent) => {
     const digit = '0123456789'.indexOf(event.key);
@@ -47,6 +73,9 @@ export const App = () => {
         switch(mode) {
           case 'digit':
             dispatch({ type: 'enterDigit', payload: { digit } });
+            break;
+          case 'given':
+            dispatch({ type: 'enterGiven', payload: { digit } });
             break;
           case 'centrePencil':
             dispatch({ type: 'togglePencilMark', payload: { type: 'centre', digit } });
@@ -96,10 +125,18 @@ export const App = () => {
         dispatch({ type: 'updateSelection', payload: { selection: [] } });
         break;
       case 'Backspace':
-        dispatch({ type: 'clearCell', payload: { } });
+        dispatch({
+          type: 'clearCell',
+          payload: {
+            retainEntered: mode !== 'digit',
+            retainCornerPencils: mode !== 'cornerPencil',
+            retainCentrePencils: mode !== 'centrePencil',
+            retainGivens: mode !== 'given',
+          }
+        });
         break;
     }
-  }, [dispatch]);
+  }, [dispatch, mode]);
 
   useEffect(() => {
     const globalKeyDownHandler = (event: KeyboardEvent) => {
@@ -111,6 +148,8 @@ export const App = () => {
             } else if(mode === 'centrePencil') {
               mode = 'cornerPencil';
             } else if(mode === 'cornerPencil') {
+              mode = 'given';
+            } else if(mode === 'given') {
               mode = 'digit';
             }
             return { mode, ...rest };
@@ -154,6 +193,13 @@ export const App = () => {
             >
               Corner
             </Button>
+            <Button
+              variant={mode === 'given' ? 'contained' : 'outlined'}
+              onClick={() => setState(prev => ({...prev, mode: 'given'}))}
+              tabIndex={5}
+            >
+              Given
+            </Button>
           </ButtonGroup>
         </div>
         <div>
@@ -172,6 +218,9 @@ export const App = () => {
               type: 'setCursor', payload: { row, column, extendSelection: true }
             })}
           />
+        </div>
+        <div>
+          <FormControlLabel control={<Checkbox checked={solved} />} label="Solved" />
         </div>
       </header>
     </div>

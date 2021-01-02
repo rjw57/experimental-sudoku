@@ -12,8 +12,8 @@ export interface PuzzleControllerUndoAction {
   type: 'undo';
 };
 
-export interface PuzzleControllerEnterDigitAction {
-  type: 'enterDigit';
+export interface PuzzleControllerEnterAction {
+  type: 'enterDigit' | 'enterGiven';
   payload: { digit: number };
 };
 
@@ -28,6 +28,7 @@ export interface PuzzleControllerClearCellAction {
     retainEntered?: boolean,
     retainCornerPencils?: boolean,
     retainCentrePencils?: boolean,
+    retainGivens?: boolean,
   }
 }
 
@@ -49,7 +50,7 @@ export interface PuzzleControllerUpdateSelectionAction {
 
 export type PuzzleControllerAction = (
   PuzzleControllerUndoAction |
-  PuzzleControllerEnterDigitAction |
+  PuzzleControllerEnterAction |
   PuzzleControllerTogglePencilMarkAction |
   PuzzleControllerUpdateSelectionAction |
   PuzzleControllerSetCursorAction |
@@ -139,12 +140,15 @@ export const usePuzzleController =
         case 'clearCell':
           setCell(cell => {
             const {
-              retainEntered = false, retainCornerPencils = false, retainCentrePencils = false
+              retainEntered = false, retainCornerPencils = false, retainCentrePencils = false,
+              retainGivens = false,
             } = action.payload;
-            if(!retainEntered) { delete cell.enteredDigit; }
-            if(!retainCornerPencils) { cell.cornerPencilDigits = []; }
-            if(!retainCentrePencils) { cell.centrePencilDigits = []; }
-            return cell;
+            const newCell: typeof cell = {};
+            if(retainEntered) { newCell.enteredDigit = cell.enteredDigit; }
+            if(retainCornerPencils) { newCell.cornerPencilDigits = cell.cornerPencilDigits; }
+            if(retainCentrePencils) { newCell.centrePencilDigits = cell.centrePencilDigits; }
+            if(retainGivens) { newCell.givenDigit = cell.givenDigit; }
+            return newCell;
           });
           break;
         case 'enterDigit':
@@ -153,6 +157,13 @@ export const usePuzzleController =
             const { digit } = action.payload;
             if(typeof cell.givenDigit !== 'undefined') { return cell; }
             return { enteredDigit: digit };
+          });
+          break;
+        case 'enterGiven':
+          // Entering a given replaces the entire cell.
+          setCell(cell => {
+            const { digit } = action.payload;
+            return { givenDigit: digit };
           });
           break;
         case 'togglePencilMark':
