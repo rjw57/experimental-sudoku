@@ -33,7 +33,7 @@ data "google_firebase_web_app_config" "default" {
 
 # App config in frontend/ directory
 resource "local_file" "app_config" {
-  filename = "${path.module}/../frontend/firebaseAppConfig.json"
+  filename = "${path.module}/../frontend/src/firebaseAppConfig.json"
 
   content = jsonencode({
     appId             = google_firebase_web_app.default.app_id
