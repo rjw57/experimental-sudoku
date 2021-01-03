@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "firebase emulators:exec \"mocha --exit\""
+    "test": "firebase emulators:exec \"mocha --exit --no-colors\""
   },
   "repository": {
     "type": "git",

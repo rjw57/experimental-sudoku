@@ -1,57 +1,102 @@
 import * as firebase from '@firebase/rules-unit-testing';
 
+const createPuzzleFixture = (ownerUid: string) => ({
+  ownerUid,
+  title: 'A test puzzle',
+  cells: [
+    { row: 3, column: 8, givenDigit: 6 },
+  ],
+});
+
 describe('Firestore security rules', () => {
   const projectId = 'test-project';
   const adminApp = firebase.initializeAdminApp({ projectId });
 
+  // Make sure the firestore is cleared before and after each test.
+  beforeEach(async () => firebase.clearFirestoreData({ projectId }));
+  afterEach(async () => firebase.clearFirestoreData({ projectId }));
+
   describe('with no user signed in', () => {
     const app = firebase.initializeTestApp({ projectId });
+    const puzzlesCollection = app.firestore().collection('puzzles');
+    const adminPuzzlesCollection = adminApp.firestore().collection('puzzles');
 
-    it('should disallow anonymous reads from arbitrary collections', async () => {
+    it('should disallow reads from arbitrary collections', async () => {
       await adminApp.firestore().collection('testing').doc('test').set({ data: 'foo' });
       await firebase.assertFails(app.firestore().collection('testing').doc('test').get());
     });
 
-    it('should disallow anonymous writes to arbitrary collections', async () => {
+    it('should disallow writes to arbitrary collections', async () => {
       await firebase.assertFails(
         app.firestore().collection('testing').doc('test').set({ data: 'foo' })
       );
     });
+
+    describe('with an existing puzzle', () => {
+      const puzzleId = 'testing-id';
+
+      beforeEach(async () => {
+        await adminPuzzlesCollection.doc(puzzleId).set(createPuzzleFixture('admin'));
+      });
+
+      it('should allow the puzzle to be read', async () => {
+        await firebase.assertSucceeds(puzzlesCollection.doc(puzzleId).get());
+      });
+    });
+
+    it('should disallow puzzle creation', async () => {
+      await firebase.assertFails(
+        puzzlesCollection.add(createPuzzleFixture('someUser'))
+      );
+    });
   });
 
-  describe('with an existing puzzle', () => {
-    const puzzleId = 'testing-id';
+  describe('with a test user', () => {
+    const testUid = 'test-user';
+    const app = firebase.initializeTestApp({ projectId, auth: { uid: testUid } });
+    const puzzlesCollection = app.firestore().collection('puzzles');
     const adminPuzzlesCollection = adminApp.firestore().collection('puzzles');
 
-    beforeEach(async () => {
-      await firebase.clearFirestoreData({ projectId });
-      await adminPuzzlesCollection.doc(puzzleId).set({
-        cells: [
-          { row: 3, column: 8, givenDigit: 6 },
-        ],
-      });
-    });
+    describe('with an existing puzzle', () => {
+      const puzzleId = 'testing-id';
 
-    describe('with no user signed in', () => {
-      const app = firebase.initializeTestApp({ projectId });
-      const puzzlesCollection = app.firestore().collection('puzzles');
+      beforeEach(async () => {
+        await adminPuzzlesCollection.doc(puzzleId).set(createPuzzleFixture('admin'));
+      });
 
       it('should allow the puzzle to be read', async () => {
         await firebase.assertSucceeds(puzzlesCollection.doc(puzzleId).get());
       });
     });
 
-    describe('with a user signed in', () => {
-      const app = firebase.initializeTestApp({ projectId, auth: { uid: 'testUser' } });
-      const puzzlesCollection = app.firestore().collection('puzzles');
-
-      it('should allow the puzzle to be read', async () => {
-        await firebase.assertSucceeds(puzzlesCollection.doc(puzzleId).get());
+    describe('puzzle creation', () => {
+      it('should succeed', async () => {
+        await firebase.assertSucceeds(puzzlesCollection.add(createPuzzleFixture(testUid)));
       });
-    });
 
-    afterEach(async () => {
-      await firebase.clearFirestoreData({ projectId });
+      it('should fail if the uid does not match the current user', async () => {
+        await firebase.assertFails(puzzlesCollection.add(createPuzzleFixture(testUid + '-suffix')));
+      });
+
+      it('should fail if extra keys are provided', async () => {
+        await firebase.assertFails(puzzlesCollection.add({
+          ...createPuzzleFixture(testUid), otherKey: 'foo'
+        }));
+      });
+
+      ['cells', 'ownerUid', 'title'].forEach(key => (
+        it(`should fail if "${key}" key is not present`, async () => {
+          const puzzle = createPuzzleFixture(testUid);
+          delete puzzle[key];
+          await firebase.assertFails(puzzlesCollection.add(puzzle));
+        })
+      ));
+
+      it('should fail if the title is too short', async () => {
+        await firebase.assertFails(puzzlesCollection.add({
+          ...createPuzzleFixture(testUid), title: 'x',
+        }));
+      });
     });
   });
 });
