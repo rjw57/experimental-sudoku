@@ -84,7 +84,7 @@ const styles = (theme: Theme) => createStyles({
   cursorRect: {
     visibility: 'hidden',
     strokeWidth: 0,
-    outline: 'black dotted 1.5px',
+    outline: `${theme.palette.primary.main} dotted 1.5px`,
   },
 });
 
