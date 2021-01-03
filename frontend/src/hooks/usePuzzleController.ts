@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { PuzzleCell, PuzzleSelection } from './components/Puzzle';
+import { PuzzleCell, PuzzleSelection } from '../components';
 
 export interface PuzzleControllerState {
   cursorRow: number;
