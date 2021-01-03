@@ -4,7 +4,6 @@ import firebase from 'firebase/app';
 import 'firebase/auth';
 import 'firebase/firestore';
 
-import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import firebaseAppConfig from './firebaseAppConfig';
