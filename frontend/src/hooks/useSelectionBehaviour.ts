@@ -15,6 +15,7 @@ export const useSelectionBehaviour = (
   handleKeyDown: useCallback((event: KeyboardEvent) => {
     switch(event.key) {
       case 'ArrowUp':
+        event.preventDefault();
         dispatch({
           type: 'setCursor', payload: {
             row: -1, column: 0, relative: true, extendSelection: event.shiftKey,
@@ -23,6 +24,7 @@ export const useSelectionBehaviour = (
         });
         break;
       case 'ArrowDown':
+        event.preventDefault();
         dispatch({
           type: 'setCursor', payload: {
             row: 1, column: 0, relative: true, extendSelection: event.shiftKey,
@@ -31,6 +33,7 @@ export const useSelectionBehaviour = (
         });
         break;
       case 'ArrowLeft':
+        event.preventDefault();
         dispatch({
           type: 'setCursor', payload: {
             row: 0, column: -1, relative: true, extendSelection: event.shiftKey,
@@ -39,6 +42,7 @@ export const useSelectionBehaviour = (
         });
         break;
       case 'ArrowRight':
+        event.preventDefault();
         dispatch({
           type: 'setCursor', payload: {
             row: 0, column: 1, relative: true, extendSelection: event.shiftKey,
@@ -47,6 +51,7 @@ export const useSelectionBehaviour = (
         });
         break;
       case 'Escape':
+        event.preventDefault();
         dispatch({ type: 'updateSelection', payload: { selection: [] } });
         break;
     }

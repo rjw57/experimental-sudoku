@@ -14,6 +14,7 @@ export const useEditBehaviour = (
   handleKeyDown: useCallback((event: KeyboardEvent) => {
     const digit = '0123456789'.indexOf(event.key);
     if(digit >= 1 && digit <= 9) {
+      event.preventDefault();
       switch(mode) {
         case 'digit':
           dispatch({ type: 'enterDigit', payload: { digit } });
@@ -32,6 +33,7 @@ export const useEditBehaviour = (
 
     switch(event.key) {
       case 'Backspace':
+        event.preventDefault();
         dispatch({
           type: 'clearCell',
           payload: {
@@ -43,6 +45,7 @@ export const useEditBehaviour = (
         });
         break;
       case 'z':
+        event.preventDefault();
         event.ctrlKey && dispatch({ type: 'undo' });
         break;
     }

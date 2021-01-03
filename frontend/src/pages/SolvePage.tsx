@@ -60,6 +60,7 @@ export const SolvePage = () => {
 
     switch(event.key) {
       case ' ':
+        event.preventDefault();
         setMode(mode => {
           if(mode === 'digit') {
             mode = 'centrePencil';
