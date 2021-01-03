@@ -1,3 +1,4 @@
 nodeenv
 *.log
 node_modules/
+.firebase/
