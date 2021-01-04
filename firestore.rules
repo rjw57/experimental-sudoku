@@ -9,10 +9,11 @@ service cloud.firestore {
       allow read;
       allow create: if (
         (request.auth.uid != null) &&
-        (request.resource.data.keys().hasOnly(['ownerUid', 'cells', 'title'])) &&
-        (request.resource.data.keys().hasAll(['ownerUid', 'cells', 'title'])) &&
+        (request.resource.data.keys().hasOnly(['createdAt', 'ownerUid', 'cells', 'title'])) &&
+        (request.resource.data.keys().hasAll(['createdAt', 'ownerUid', 'cells', 'title'])) &&
         (request.resource.data.ownerUid == request.auth.uid) &&
-        (request.resource.data.title.size() >= 3)
+        (request.resource.data.title.size() >= 3) &&
+        (request.resource.data.createdAt == request.time)
       );
     }
   }
