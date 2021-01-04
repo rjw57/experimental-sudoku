@@ -4,6 +4,7 @@ import firebase from 'firebase/app';
 import 'firebase/auth';
 import 'firebase/firestore';
 
+import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import firebaseAppConfig from './firebaseAppConfig';
@@ -13,7 +14,6 @@ firebase.initializeApp(firebaseAppConfig);
 firebase.auth().useDeviceLanguage();
 
 if(process.env.NODE_ENV === 'development') {
-  console.log('Running in development, using emulators');
   firebase.auth().useEmulator('http://localhost:9099/');
   firebase.firestore().useEmulator('localhost', 8080);
 }

@@ -1,5 +1,10 @@
 import { useState, useMemo, useCallback, KeyboardEvent } from 'react';
+import firebase from 'firebase/app';
+import 'firebase/auth';
+import 'firebase/firestore';
 import { useMeasure } from 'react-use';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { useDocument } from 'react-firebase-hooks/firestore';
 import {
   Button,
   ButtonGroup,
@@ -37,7 +42,16 @@ const useStyles = makeStyles((theme: Theme) => createStyles({
   },
 }));
 
-export const SolvePage = () => {
+export interface SolvePageProps {
+  puzzleId: string;
+};
+
+export const SolvePage = ({ puzzleId }: SolvePageProps) => {
+  const [ user ] = useAuthState(firebase.auth());
+  const [ puzzleDocument ] = useDocument(
+    firebase.firestore().collection('puzzles').doc(puzzleId)
+  );
+
   const classes = useStyles();
   const [
     { cellsHistory, selection, cursorRow, cursorColumn }, dispatch
@@ -125,6 +139,8 @@ export const SolvePage = () => {
       <div>
         <FormControlLabel control={<Checkbox checked={isSolved} />} label="Solved" />
       </div>
+      { user && <div>Signed in as { user.displayName || user.email || user.uid }</div> }
+      { puzzleDocument && <div>Puzzle: { puzzleDocument.data().title }</div> }
     </div>
   );
 };
