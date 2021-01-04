@@ -1,12 +1,21 @@
 import * as firebase from '@firebase/rules-unit-testing';
+import * as firebaseAdmin from 'firebase-admin';
 
-const createPuzzleFixture = (ownerUid: string) => ({
-  ownerUid,
-  title: 'A test puzzle',
-  cells: [
-    { row: 3, column: 8, givenDigit: 6 },
-  ],
-});
+interface CreatePuzzleFixtureOptions {
+  usingAdmin?: boolean;
+}
+
+const createPuzzleFixture = (ownerUid: string, options: CreatePuzzleFixtureOptions = {}) => {
+  const { usingAdmin = false } = options;
+  return {
+    ownerUid,
+    title: 'A test puzzle',
+    cells: [
+      { row: 3, column: 8, givenDigit: 6 },
+    ],
+    createdAt: (usingAdmin ? firebaseAdmin : firebase).firestore.FieldValue.serverTimestamp(),
+  };
+};
 
 describe('Firestore security rules', () => {
   const projectId = 'test-project';
@@ -36,7 +45,9 @@ describe('Firestore security rules', () => {
       const puzzleId = 'testing-id';
 
       beforeEach(async () => {
-        await adminPuzzlesCollection.doc(puzzleId).set(createPuzzleFixture('admin'));
+        await adminPuzzlesCollection.doc(puzzleId).set(
+          createPuzzleFixture('admin', { usingAdmin: true })
+        );
       });
 
       it('should allow the puzzle to be read', async () => {
@@ -61,7 +72,9 @@ describe('Firestore security rules', () => {
       const puzzleId = 'testing-id';
 
       beforeEach(async () => {
-        await adminPuzzlesCollection.doc(puzzleId).set(createPuzzleFixture('admin'));
+        await adminPuzzlesCollection.doc(puzzleId).set(
+          createPuzzleFixture('admin', { usingAdmin: true })
+        );
       });
 
       it('should allow the puzzle to be read', async () => {
@@ -84,7 +97,7 @@ describe('Firestore security rules', () => {
         }));
       });
 
-      ['cells', 'ownerUid', 'title'].forEach(key => (
+      ['createdAt', 'cells', 'ownerUid', 'title'].forEach(key => (
         it(`should fail if "${key}" key is not present`, async () => {
           const puzzle = createPuzzleFixture(testUid);
           delete puzzle[key];
@@ -95,6 +108,15 @@ describe('Firestore security rules', () => {
       it('should fail if the title is too short', async () => {
         await firebase.assertFails(puzzlesCollection.add({
           ...createPuzzleFixture(testUid), title: 'x',
+        }));
+      });
+
+      it('should fail if the timestamp is not "now"', async () => {
+        await firebase.assertFails(puzzlesCollection.add({
+          ...createPuzzleFixture(testUid),
+          createdAt: firebase.firestore.Timestamp.fromDate(
+            new Date('2021-01-04T21:52:08+00:00'),
+          ),
         }));
       });
     });
