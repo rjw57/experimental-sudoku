@@ -79,9 +79,11 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
         newCells.push({ row, column, givenDigit });
       }
     }));
+    /*
     puzzlesCollection().doc(puzzleId).set(updatePuzzle(
       puzzleDocument.data(), { cells: newCells }
     ));
+   */
   }, [isEditing, cells, puzzleDocument, puzzleId]);
 
   useEffect(() => {

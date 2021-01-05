@@ -30,7 +30,6 @@ export const IndexPage = () => {
   const [ puzzles ] = useCollection(
     firebase.firestore().collection('puzzles')
       .where('ownerUid', '==', user ? user.uid : '')
-      .orderBy('updatedAt')
   );
   const puzzleSnapshot: firebase.firestore.QueryDocumentSnapshot<PuzzleDocument>[] = (
     puzzles ? puzzles.docs : []
