@@ -68,6 +68,11 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
   const [puzzleDivRef, { width, height }] = useMeasure<HTMLDivElement>();
   const cellSize = Math.min(width, height) / 9;
 
+  const canEdit = (
+    user && user.uid && puzzleDocument && (puzzleDocument.data().ownerUid === user.uid)
+  );
+  const [isEditing, setIsEditing] = useState(false);
+
   const handlePuzzleOnKeyDown = useCallback((event: KeyboardEvent) => {
     handleEditKeyDown(event);
     handleSelectionKeyDown(event);
@@ -93,6 +98,14 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
 
   return (
     <div className={classes.root}>
+      {
+        canEdit && (
+          <FormControlLabel
+            onChange={event => setIsEditing((event.target as HTMLInputElement).checked)}
+            control={<Checkbox checked={isEditing}/>} label="Edit"
+          />
+        )
+      }
       <div>
         <ButtonGroup color="primary">
           <Button
