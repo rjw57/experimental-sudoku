@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback, KeyboardEvent } from 'react';
 import firebase from 'firebase/app';
 import 'firebase/auth';
-import 'firebase/firestore';
 import { useMeasure } from 'react-use';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { useDocument } from 'react-firebase-hooks/firestore';
@@ -16,6 +15,7 @@ import {
 } from '@material-ui/core';
 
 import { Puzzle } from '../components';
+import { puzzlesCollection } from '../db';
 import {
   usePuzzleController,
   useSelectionBehaviour,
@@ -48,9 +48,7 @@ export interface SolvePageProps {
 
 export const SolvePage = ({ puzzleId }: SolvePageProps) => {
   const [ user ] = useAuthState(firebase.auth());
-  const [ puzzleDocument ] = useDocument(
-    firebase.firestore().collection('puzzles').doc(puzzleId)
-  );
+  const [ puzzleDocument ] = useDocument(puzzlesCollection().doc(puzzleId));
 
   const classes = useStyles();
   const [

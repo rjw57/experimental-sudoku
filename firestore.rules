@@ -5,16 +5,53 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    function isSignedIn() {
+      return request.auth.uid != null;
+    }
+
     match /puzzles/{puzzleId} {
       allow read;
       allow create: if (
-        (request.auth.uid != null) &&
-        (request.resource.data.keys().hasOnly(['createdAt', 'ownerUid', 'cells', 'title'])) &&
-        (request.resource.data.keys().hasAll(['createdAt', 'ownerUid', 'cells', 'title'])) &&
-        (request.resource.data.ownerUid == request.auth.uid) &&
-        (request.resource.data.title.size() >= 3) &&
-        (request.resource.data.createdAt == request.time)
+        isSignedIn() &&
+        isPuzzleOwner() &&
+        isValidPuzzle() &&
+        isCreatedAtNow() &&
+        isUpdatedAtNow()
       );
+      allow update: if (
+        isSignedIn() &&
+        onlyUpdatableFieldsChanged() &&
+        isPuzzleOwner() &&
+        isValidPuzzle() &&
+        isUpdatedAtNow()
+      );
+
+      function onlyUpdatableFieldsChanged() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'title', 'cells', 'updatedAt'
+        ]);
+      }
+
+      function isCreatedAtNow() {
+        return request.resource.data.createdAt == request.time;
+      }
+
+      function isUpdatedAtNow() {
+        return request.resource.data.updatedAt == request.time;
+      }
+
+      function isPuzzleOwner() {
+        return request.resource.data.ownerUid == request.auth.uid;
+      }
+
+      function isValidPuzzle() {
+        let requiredKeys = ['updatedAt', 'createdAt', 'ownerUid', 'cells', 'title'];
+        return (
+          (request.resource.data.keys().hasOnly(requiredKeys)) &&
+          (request.resource.data.keys().hasAll(requiredKeys)) &&
+          (request.resource.data.title.size() >= 3)
+        );
+      }
     }
   }
 }

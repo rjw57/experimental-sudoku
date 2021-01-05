@@ -9,31 +9,13 @@ import {
   Typography,
 } from '@material-ui/core';
 
+import { createPuzzle, PuzzleDocument } from '../db';
+
 const createGoogleAuthProvider = () => {
   const authProvider = new firebase.auth.GoogleAuthProvider();
   authProvider.addScope('profile');
   return authProvider;
 };
-
-interface PuzzleDocument {
-  title: string;
-  ownerUid: string;
-  createdAt: ReturnType<typeof firebase.firestore.FieldValue.serverTimestamp>;
-  cells: {
-    row: number;
-    column: number;
-    givenDigit: number;
-  }[];
-}
-
-const createPuzzle = async (user: firebase.User): Promise<string> => (
-  (await firebase.firestore().collection('puzzles').add({
-    title: 'Untitled puzzle',
-    ownerUid: user.uid,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    cells: [],
-  })).id
-);
 
 export const IndexPage = () => {
   const [ user, isUserLoading ] = useAuthState(firebase.auth());
@@ -46,7 +28,9 @@ export const IndexPage = () => {
   const history = useHistory();
 
   const [ puzzles ] = useCollection(
-    firebase.firestore().collection('puzzles').where('ownerUid', '==', user ? user.uid : '')
+    firebase.firestore().collection('puzzles')
+      .where('ownerUid', '==', user ? user.uid : '')
+      .orderBy('updatedAt')
   );
   const puzzleSnapshot: firebase.firestore.QueryDocumentSnapshot<PuzzleDocument>[] = (
     puzzles ? puzzles.docs : []
@@ -54,7 +38,7 @@ export const IndexPage = () => {
 
   const newPuzzle = useCallback(async () => {
     if(!user) { return; }
-    const puzzleId = await createPuzzle(user);
+    const puzzleId = (await createPuzzle(user)).id;
     history.push(`/puzzles/${puzzleId}`);
   }, [user, history]);
 
