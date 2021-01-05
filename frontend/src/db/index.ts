@@ -31,3 +31,11 @@ export const createPuzzle = async (
     cells: [],
   })
 );
+
+export const updatePuzzle = (
+  originalDoc: {[key: string]: any}, update: {[key: string]: any}
+) => ({
+  ...originalDoc,
+  ...update,
+  updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+});

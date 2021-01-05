@@ -48,13 +48,25 @@ export interface PuzzleControllerUpdateSelectionAction {
   payload: { selection: PuzzleSelection, extend?: boolean };
 };
 
+export interface PuzzleControllerSetCellsAction {
+  type: 'setCells';
+  payload: {
+    cells: {
+      row: number;
+      column: number;
+      cell: PuzzleCell;
+    }[];
+  };
+};
+
 export type PuzzleControllerAction = (
   PuzzleControllerUndoAction |
   PuzzleControllerEnterAction |
   PuzzleControllerTogglePencilMarkAction |
   PuzzleControllerUpdateSelectionAction |
   PuzzleControllerSetCursorAction |
-  PuzzleControllerClearCellAction
+  PuzzleControllerClearCellAction |
+  PuzzleControllerSetCellsAction
 );
 
 export type PuzzleControllerDispatchFunction = (action: PuzzleControllerAction) => void;
@@ -66,8 +78,33 @@ export const usePuzzleController =
     });
 
     const dispatch = useCallback((action: PuzzleControllerAction) => {
+      // Return a cell array updated with the given cells
+      const setCells = (
+        cells: PuzzleCell[][],
+        newCells: { row: number; column: number; cell: PuzzleCell }[]
+      ) => {
+        newCells.forEach(({ row, column, cell }) => {
+          // Make sure arrays are appropriate sizes.
+          while(cells.length <= row) { cells = [...cells, []]; }
+          while(cells[row].length <= column) { cells[row] = [...cells[row], {}]; }
+
+          cells = [
+            ...cells.slice(0, row),
+            [
+              ...cells[row].slice(0, column),
+              cell,
+              ...cells[row].slice(column+1),
+            ],
+            ...cells.slice(row+1),
+          ];
+        });
+        return cells;
+      };
+
       // Update the cell(s) at the current selection.
-      const setCell = (cellOrFunc: PuzzleCell | ((prev: PuzzleCell, prevState: PuzzleControllerState) => PuzzleCell)) => (
+      const setCell = (
+        cellOrFunc: PuzzleCell | ((prev: PuzzleCell, prevState: PuzzleControllerState) => PuzzleCell),
+      ) => (
         setState(state => {
           const { cellsHistory, selection, cursorRow, cursorColumn } = state;
           const editTarget = [
@@ -76,30 +113,27 @@ export const usePuzzleController =
           ];
           let cells = cellsHistory[cellsHistory.length - 1];
           editTarget.forEach(({ row, column }) => {
-            // Make sure the cells array has enough rows.
             while(cells.length <= row) { cells = [...cells, []]; }
-
-            // Make sure the row array has enough cells.
             while(cells[row].length <= column) { cells[row] = [...cells[row], {}]; }
-
-            const newCell = (typeof cellOrFunc === 'function')
+            const cell = (typeof cellOrFunc === 'function')
               ? cellOrFunc(cells[row][column], state) : cellOrFunc
-
-            cells = [
-              ...cells.slice(0, row),
-              [
-                ...cells[row].slice(0, column),
-                newCell,
-                ...cells[row].slice(column+1),
-              ],
-              ...cells.slice(row+1),
-            ];
+            cells = setCells(cells, [{ row, column, cell }]);
           });
           return { ...state, cellsHistory: [...cellsHistory, cells] };
         })
       );
 
       switch(action.type) {
+        case 'setCells':
+          setState(state => {
+            const { cells } = action.payload;
+            const priorCells = state.cellsHistory[state.cellsHistory.length - 1] || [];
+            return {
+              ...state,
+              cellsHistory: [...state.cellsHistory, setCells(priorCells, cells)]
+            };
+          });
+          break;
         case 'updateSelection':
           setState(({selection: priorSelection, ...rest}) => {
             const { selection, extend = false } = action.payload;

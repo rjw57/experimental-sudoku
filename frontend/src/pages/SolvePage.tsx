@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, KeyboardEvent } from 'react';
+import { useEffect, useState, useMemo, useCallback, KeyboardEvent } from 'react';
 import firebase from 'firebase/app';
 import 'firebase/auth';
 import { useMeasure } from 'react-use';
@@ -15,7 +15,7 @@ import {
 } from '@material-ui/core';
 
 import { Puzzle } from '../components';
-import { puzzlesCollection } from '../db';
+import { updatePuzzle, puzzlesCollection } from '../db';
 import {
   usePuzzleController,
   useSelectionBehaviour,
@@ -47,10 +47,15 @@ export interface SolvePageProps {
 };
 
 export const SolvePage = ({ puzzleId }: SolvePageProps) => {
+  const classes = useStyles();
   const [ user ] = useAuthState(firebase.auth());
   const [ puzzleDocument ] = useDocument(puzzlesCollection().doc(puzzleId));
 
-  const classes = useStyles();
+  const canEdit = (
+    user && user.uid && puzzleDocument && (puzzleDocument.data().ownerUid === user.uid)
+  );
+  const [isEditing, setIsEditing] = useState(false);
+
   const [
     { cellsHistory, selection, cursorRow, cursorColumn }, dispatch
   ] = usePuzzleController();
@@ -58,7 +63,7 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
     handleKeyDown: handleSelectionKeyDown, handleCellClick, handleCellDragStart, handleCellDrag
   } = useSelectionBehaviour(dispatch);
   const [mode, setMode] = useState<EditMode>('digit');
-  const { handleKeyDown: handleEditKeyDown } = useEditBehaviour(mode, dispatch);
+  const { handleKeyDown: handleEditKeyDown } = useEditBehaviour(isEditing ? 'given' : mode, dispatch);
 
   const cells = cellsHistory[cellsHistory.length-1];
   const isSolved = useMemo(() => checkSudoku(cells), [cells]);
@@ -66,10 +71,34 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
   const [puzzleDivRef, { width, height }] = useMeasure<HTMLDivElement>();
   const cellSize = Math.min(width, height) / 9;
 
-  const canEdit = (
-    user && user.uid && puzzleDocument && (puzzleDocument.data().ownerUid === user.uid)
-  );
-  const [isEditing, setIsEditing] = useState(false);
+  useEffect(() => {
+    if(!isEditing || !puzzleDocument) { return; }
+    const newCells: { row: number; column: number; givenDigit: number }[] = [];
+    cells.forEach((rowElems, row) => rowElems.forEach(({ givenDigit }, column) => {
+      if(givenDigit) {
+        newCells.push({ row, column, givenDigit });
+      }
+    }));
+    puzzlesCollection().doc(puzzleId).set(updatePuzzle(
+      puzzleDocument.data(), { cells: newCells }
+    ));
+  }, [isEditing, cells, puzzleDocument, puzzleId]);
+
+  useEffect(() => {
+    if(!puzzleDocument) { return; }
+    const { cells } = puzzleDocument.data();
+    if(!cells) { return; }
+    dispatch({
+      type: 'setCells',
+      payload: {
+        cells: (puzzleDocument.data().cells || []).map((data: {[key: string]: any}) => ({
+          row: Number(data.row),
+          column: Number(data.column),
+          cell: { givenDigit: Number(data.givenDigit) }
+        }))
+      }
+    });
+  }, [puzzleDocument, dispatch]);
 
   const handlePuzzleOnKeyDown = useCallback((event: KeyboardEvent) => {
     handleEditKeyDown(event);
@@ -84,8 +113,6 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
           } else if(mode === 'centrePencil') {
             mode = 'cornerPencil';
           } else if(mode === 'cornerPencil') {
-            mode = 'given';
-          } else if(mode === 'given') {
             mode = 'digit';
           }
           return mode;
@@ -104,38 +131,33 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
           />
         )
       }
-      <div>
-        <ButtonGroup color="primary">
-          <Button
-            variant={mode === 'digit' ? 'contained' : 'outlined'}
-            onClick={() => setMode('digit')}
-            tabIndex={2}
-          >
-            Digit
-          </Button>
-          <Button
-            variant={mode === 'centrePencil' ? 'contained' : 'outlined'}
-            onClick={() => setMode('centrePencil')}
-            tabIndex={3}
-          >
-            Centre
-          </Button>
-          <Button
-            variant={mode === 'cornerPencil' ? 'contained' : 'outlined'}
-            onClick={() => setMode('cornerPencil')}
-            tabIndex={4}
-          >
-            Corner
-          </Button>
-          <Button
-            variant={mode === 'given' ? 'contained' : 'outlined'}
-            onClick={() => setMode('given')}
-            tabIndex={5}
-          >
-            Given
-          </Button>
-        </ButtonGroup>
-      </div>
+      {
+        !isEditing && <div>
+          <ButtonGroup color="primary">
+            <Button
+              variant={mode === 'digit' ? 'contained' : 'outlined'}
+              onClick={() => setMode('digit')}
+              tabIndex={2}
+            >
+              Digit
+            </Button>
+            <Button
+              variant={mode === 'centrePencil' ? 'contained' : 'outlined'}
+              onClick={() => setMode('centrePencil')}
+              tabIndex={3}
+            >
+              Centre
+            </Button>
+            <Button
+              variant={mode === 'cornerPencil' ? 'contained' : 'outlined'}
+              onClick={() => setMode('cornerPencil')}
+              tabIndex={4}
+            >
+              Corner
+            </Button>
+          </ButtonGroup>
+        </div>
+      }
       <div ref={puzzleDivRef}>
         <Puzzle
           classes={{root: classes.puzzleRoot}}
