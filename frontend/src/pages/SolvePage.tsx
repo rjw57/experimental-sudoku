@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback, KeyboardEvent } from 'react';
+import { useRef, useEffect, useState, useMemo, useCallback, KeyboardEvent } from 'react';
 import firebase from 'firebase/app';
 import 'firebase/auth';
 import { useMeasure } from 'react-use';
@@ -71,19 +71,20 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
   const [puzzleDivRef, { width, height }] = useMeasure<HTMLDivElement>();
   const cellSize = Math.min(width, height) / 9;
 
+  const wasEditingRef = useRef(false);
   useEffect(() => {
-    if(!isEditing || !puzzleDocument) { return; }
-    const newCells: { row: number; column: number; givenDigit: number }[] = [];
-    cells.forEach((rowElems, row) => rowElems.forEach(({ givenDigit }, column) => {
-      if(givenDigit) {
-        newCells.push({ row, column, givenDigit });
-      }
-    }));
-    /*
-    puzzlesCollection().doc(puzzleId).set(updatePuzzle(
-      puzzleDocument.data(), { cells: newCells }
-    ));
-   */
+    if(!isEditing && wasEditingRef.current) {
+      const newCells: { row: number; column: number; givenDigit: number }[] = [];
+      cells.forEach((rowElems, row) => rowElems.forEach(({ givenDigit }, column) => {
+        if(givenDigit) {
+          newCells.push({ row, column, givenDigit });
+        }
+      }));
+      puzzlesCollection().doc(puzzleId).set(updatePuzzle(
+        puzzleDocument.data(), { cells: newCells }
+      ));
+    }
+    wasEditingRef.current = isEditing;
   }, [isEditing, cells, puzzleDocument, puzzleId]);
 
   useEffect(() => {
