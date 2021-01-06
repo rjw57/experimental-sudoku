@@ -21,15 +21,20 @@ service cloud.firestore {
       allow update: if (
         isSignedIn() &&
         onlyUpdatableFieldsChanged() &&
+        isUpdatedAtNow() &&
+        wasNotUpdatedRecently() &&
         isPuzzleOwner() &&
-        isValidPuzzle() &&
-        isUpdatedAtNow()
+        isValidPuzzle()
       );
 
       function onlyUpdatableFieldsChanged() {
         return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'title', 'cells', 'updatedAt'
         ]);
+      }
+
+      function wasNotUpdatedRecently() {
+        return (request.time - resource.data.updatedAt).seconds() > 10;
       }
 
       function isCreatedAtNow() {

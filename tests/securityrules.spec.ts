@@ -101,9 +101,12 @@ describe('Firestore security rules', () => {
       const puzzleId = 'testing-id';
 
       beforeEach(async () => {
-        await adminPuzzlesCollection.doc(puzzleId).set(
-          createPuzzleFixture(testUid, { usingAdmin: true })
-        );
+        await adminPuzzlesCollection.doc(puzzleId).set({
+          ...createPuzzleFixture(testUid, { usingAdmin: true }),
+          updatedAt: firebaseAdmin.firestore.Timestamp.fromMillis(
+            firebaseAdmin.firestore.Timestamp.now().toMillis() - 20000
+          ),
+        });
       });
 
       it('should allow the puzzle to be read', async () => {
@@ -178,6 +181,20 @@ describe('Firestore security rules', () => {
           ));
         })
       ));
+
+      it('should forbid updates if previous updatedAt was not long enough ago', async () => {
+        const existingAdminDoc = (await adminPuzzlesCollection.doc(puzzleId).get()).data() as PuzzleDocument;
+        await firebase.assertSucceeds(adminPuzzlesCollection.doc(puzzleId).set({
+          ...existingAdminDoc,
+          updatedAt: firebaseAdmin.firestore.Timestamp.fromMillis(
+            firebaseAdmin.firestore.Timestamp.now().toMillis() - 10
+          ),
+        }));
+        const existingDoc = (await puzzlesCollection.doc(puzzleId).get()).data() as PuzzleDocument;
+        await firebase.assertFails(puzzlesCollection.doc(puzzleId).set(
+          updatePuzzle(existingDoc, {})
+        ));
+      });
     });
 
     describe('puzzle creation', () => {
