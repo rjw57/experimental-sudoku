@@ -9,7 +9,9 @@ import {
   ButtonGroup,
   Checkbox,
   FormControlLabel,
+  TextField,
   Theme,
+  Typography,
   createStyles,
   makeStyles,
 } from '@material-ui/core';
@@ -63,6 +65,7 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
     handleKeyDown: handleSelectionKeyDown, handleCellClick, handleCellDragStart, handleCellDrag
   } = useSelectionBehaviour(dispatch);
   const [mode, setMode] = useState<EditMode>('digit');
+  const [title, setTitle] = useState('');
   const { handleKeyDown: handleEditKeyDown } = useEditBehaviour(isEditing ? 'given' : mode, dispatch);
 
   const cells = cellsHistory[cellsHistory.length-1];
@@ -81,7 +84,7 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
         }
       }));
       puzzlesCollection().doc(puzzleId).set(updatePuzzle(
-        puzzleDocument.data(), { cells: newCells }
+        puzzleDocument.data(), { title, cells: newCells }
       ));
     }
     wasEditingRef.current = isEditing;
@@ -89,7 +92,8 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
 
   useEffect(() => {
     if(!puzzleDocument) { return; }
-    const { cells } = puzzleDocument.data();
+    const { cells, title } = puzzleDocument.data();
+    setTitle(title || 'Untitled');
     if(!cells) { return; }
     dispatch({
       type: 'setCells',
@@ -101,7 +105,7 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
         }))
       }
     });
-  }, [puzzleDocument, dispatch]);
+  }, [puzzleDocument, setTitle, dispatch]);
 
   const handlePuzzleOnKeyDown = useCallback((event: KeyboardEvent) => {
     handleEditKeyDown(event);
@@ -126,6 +130,13 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
 
   return (
     <div className={classes.root}>
+      { !isEditing && <Typography variant="h5">{ title }</Typography> }
+      {
+        isEditing && <TextField
+          label="Title" variant="outlined" value={title}
+          onChange={event => setTitle(event.target.value)}
+        />
+      }
       {
         canEdit && (
           <FormControlLabel
@@ -176,7 +187,6 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
         <FormControlLabel control={<Checkbox checked={isSolved} />} label="Solved" />
       </div>
       { user && <div>Signed in as { user.displayName || user.email || user.uid }</div> }
-      { puzzleDocument && <div>Puzzle: { puzzleDocument.data().title }</div> }
     </div>
   );
 };

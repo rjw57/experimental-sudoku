@@ -34,7 +34,7 @@ service cloud.firestore {
       }
 
       function wasNotUpdatedRecently() {
-        return (request.time - resource.data.updatedAt).seconds() > 10;
+        return (request.time - resource.data.updatedAt).seconds() > 1;
       }
 
       function isCreatedAtNow() {
