@@ -17,7 +17,7 @@ import {
 } from '@material-ui/core';
 
 import { Puzzle } from '../components';
-import { updatePuzzle, puzzlesCollection } from '../db';
+import { updatePuzzle, puzzlesCollection, PuzzleDocument } from '../db';
 import {
   usePuzzleController,
   useSelectionBehaviour,
@@ -52,6 +52,9 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
   const classes = useStyles();
   const [ user ] = useAuthState(firebase.auth());
   const [ puzzleDocument ] = useDocument(puzzlesCollection().doc(puzzleId));
+  const fixedCells: PuzzleDocument["cells"] = (
+    (puzzleDocument && puzzleDocument.data().cells) || []
+  );
 
   const canEdit = (
     user && user.uid && puzzleDocument && (puzzleDocument.data().ownerUid === user.uid)
@@ -60,7 +63,7 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
 
   const [
     { cellsHistory, selection, cursorRow, cursorColumn }, dispatch
-  ] = usePuzzleController();
+  ] = usePuzzleController([], isEditing ? [] : fixedCells);
   const {
     handleKeyDown: handleSelectionKeyDown, handleCellClick, handleCellDragStart, handleCellDrag
   } = useSelectionBehaviour(dispatch);
@@ -88,23 +91,13 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
       ));
     }
     wasEditingRef.current = isEditing;
-  }, [isEditing, cells, puzzleDocument, puzzleId]);
+  }, [isEditing, cells, puzzleDocument, puzzleId, title]);
 
   useEffect(() => {
     if(!puzzleDocument) { return; }
     const { cells, title } = puzzleDocument.data();
     setTitle(title || 'Untitled');
     if(!cells) { return; }
-    dispatch({
-      type: 'setCells',
-      payload: {
-        cells: (puzzleDocument.data().cells || []).map((data: {[key: string]: any}) => ({
-          row: Number(data.row),
-          column: Number(data.column),
-          cell: { givenDigit: Number(data.givenDigit) }
-        }))
-      }
-    });
   }, [puzzleDocument, setTitle, dispatch]);
 
   const handlePuzzleOnKeyDown = useCallback((event: KeyboardEvent) => {
@@ -127,6 +120,21 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
         break;
     }
   }, [setMode, handleSelectionKeyDown, handleEditKeyDown]);
+
+  let mergedCells = cells;
+  fixedCells.forEach(({ row, column, givenDigit }) => {
+    while(mergedCells.length <= row) { mergedCells = [...mergedCells, []]; }
+    while(mergedCells[row].length <= column) { mergedCells[row] = [...mergedCells[row], {}]; }
+    mergedCells = [
+      ...mergedCells.slice(0, row),
+      [
+        ...mergedCells[row].slice(0, column),
+        { givenDigit },
+        ...mergedCells[row].slice(column+1),
+      ],
+      ...mergedCells.slice(row+1),
+    ];
+  });
 
   return (
     <div className={classes.root}>
@@ -176,7 +184,8 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
         <Puzzle
           classes={{root: classes.puzzleRoot}}
           tabIndex={6} cellSize={cellSize}
-          selection={selection} cells={cells} cursorRow={cursorRow} cursorColumn={cursorColumn}
+          selection={selection} cells={mergedCells}
+          cursorRow={cursorRow} cursorColumn={cursorColumn}
           onKeyDown={handlePuzzleOnKeyDown}
           onCellClick={handleCellClick}
           onCellDragStart={handleCellDragStart}
