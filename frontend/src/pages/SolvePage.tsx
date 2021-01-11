@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useMemo, useCallback, KeyboardEvent } from 'react';
+import { useEffect, useState, useMemo, useCallback, KeyboardEvent } from 'react';
 import firebase from 'firebase/app';
 import 'firebase/auth';
 import { useMeasure } from 'react-use';
@@ -9,7 +9,6 @@ import {
   ButtonGroup,
   Checkbox,
   FormControlLabel,
-  TextField,
   Theme,
   Typography,
   createStyles,
@@ -17,7 +16,7 @@ import {
 } from '@material-ui/core';
 
 import { Puzzle } from '../components';
-import { updatePuzzle, puzzlesCollection, PuzzleDocument } from '../db';
+import { puzzlesCollection, PuzzleDocument } from '../db';
 import {
   usePuzzleController,
   useSelectionBehaviour,
@@ -52,24 +51,17 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
   const classes = useStyles();
   const [ user ] = useAuthState(firebase.auth());
   const [ puzzleDocument ] = useDocument(puzzlesCollection().doc(puzzleId));
-  const fixedCells: PuzzleDocument["cells"] = (
-    (puzzleDocument && puzzleDocument.data().cells) || []
-  );
-
-  const canEdit = (
-    user && user.uid && puzzleDocument && (puzzleDocument.data().ownerUid === user.uid)
-  );
-  const [isEditing, setIsEditing] = useState(false);
-
+  const puzzleDocumentData: PuzzleDocument = puzzleDocument ? puzzleDocument.data() : {};
+  const fixedCells = puzzleDocumentData.cells || [];
   const [
     { cellsHistory, selection, cursorRow, cursorColumn }, dispatch
-  ] = usePuzzleController([], isEditing ? [] : fixedCells);
+  ] = usePuzzleController([], fixedCells);
   const {
     handleKeyDown: handleSelectionKeyDown, handleCellClick, handleCellDragStart, handleCellDrag
   } = useSelectionBehaviour(dispatch);
   const [mode, setMode] = useState<EditMode>('digit');
   const [title, setTitle] = useState('');
-  const { handleKeyDown: handleEditKeyDown } = useEditBehaviour(isEditing ? 'given' : mode, dispatch);
+  const { handleKeyDown: handleEditKeyDown } = useEditBehaviour(mode, dispatch);
 
   const cells = cellsHistory[cellsHistory.length-1];
   const isSolved = useMemo(() => checkSudoku(cells), [cells]);
@@ -77,28 +69,9 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
   const [puzzleDivRef, { width, height }] = useMeasure<HTMLDivElement>();
   const cellSize = Math.min(width, height) / 9;
 
-  const wasEditingRef = useRef(false);
   useEffect(() => {
-    if(!isEditing && wasEditingRef.current) {
-      const newCells: { row: number; column: number; givenDigit: number }[] = [];
-      cells.forEach((rowElems, row) => rowElems.forEach(({ givenDigit }, column) => {
-        if(givenDigit) {
-          newCells.push({ row, column, givenDigit });
-        }
-      }));
-      puzzlesCollection().doc(puzzleId).set(updatePuzzle(
-        puzzleDocument.data(), { title, cells: newCells }
-      ));
-    }
-    wasEditingRef.current = isEditing;
-  }, [isEditing, cells, puzzleDocument, puzzleId, title]);
-
-  useEffect(() => {
-    if(!puzzleDocument) { return; }
-    const { cells, title } = puzzleDocument.data();
-    setTitle(title || 'Untitled');
-    if(!cells) { return; }
-  }, [puzzleDocument, setTitle, dispatch]);
+    setTitle(puzzleDocumentData.title || 'Untitled');
+  }, [puzzleDocumentData.title, setTitle]);
 
   const handlePuzzleOnKeyDown = useCallback((event: KeyboardEvent) => {
     handleEditKeyDown(event);
@@ -138,48 +111,32 @@ export const SolvePage = ({ puzzleId }: SolvePageProps) => {
 
   return (
     <div className={classes.root}>
-      { !isEditing && <Typography variant="h5">{ title }</Typography> }
-      {
-        isEditing && <TextField
-          label="Title" variant="outlined" value={title}
-          onChange={event => setTitle(event.target.value)}
-        />
-      }
-      {
-        canEdit && (
-          <FormControlLabel
-            onChange={event => setIsEditing((event.target as HTMLInputElement).checked)}
-            control={<Checkbox checked={isEditing}/>} label="Edit"
-          />
-        )
-      }
-      {
-        !isEditing && <div>
-          <ButtonGroup color="primary">
-            <Button
-              variant={mode === 'digit' ? 'contained' : 'outlined'}
-              onClick={() => setMode('digit')}
-              tabIndex={2}
-            >
-              Digit
-            </Button>
-            <Button
-              variant={mode === 'centrePencil' ? 'contained' : 'outlined'}
-              onClick={() => setMode('centrePencil')}
-              tabIndex={3}
-            >
-              Centre
-            </Button>
-            <Button
-              variant={mode === 'cornerPencil' ? 'contained' : 'outlined'}
-              onClick={() => setMode('cornerPencil')}
-              tabIndex={4}
-            >
-              Corner
-            </Button>
-          </ButtonGroup>
-        </div>
-      }
+      { <Typography variant="h5">{ title }</Typography> }
+      <div>
+        <ButtonGroup color="primary">
+          <Button
+            variant={mode === 'digit' ? 'contained' : 'outlined'}
+            onClick={() => setMode('digit')}
+            tabIndex={2}
+          >
+            Digit
+          </Button>
+          <Button
+            variant={mode === 'centrePencil' ? 'contained' : 'outlined'}
+            onClick={() => setMode('centrePencil')}
+            tabIndex={3}
+          >
+            Centre
+          </Button>
+          <Button
+            variant={mode === 'cornerPencil' ? 'contained' : 'outlined'}
+            onClick={() => setMode('cornerPencil')}
+            tabIndex={4}
+          >
+            Corner
+          </Button>
+        </ButtonGroup>
+      </div>
       <div ref={puzzleDivRef}>
         <Puzzle
           classes={{root: classes.puzzleRoot}}

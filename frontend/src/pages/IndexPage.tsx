@@ -60,6 +60,8 @@ export const IndexPage = () => {
                 docSnapshot => (
                   <li key={docSnapshot.id}>
                     <Link to={`/puzzles/${docSnapshot.id}`}>{ docSnapshot.data().title }</Link>
+                    { ' ' }
+                    (<Link to={`/puzzles/${docSnapshot.id}/edit`}>Edit</Link>)
                   </li>
                 )
               )

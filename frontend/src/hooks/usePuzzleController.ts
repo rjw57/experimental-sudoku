@@ -61,6 +61,7 @@ export interface PuzzleControllerSetCellsAction {
       column: number;
       cell: PuzzleCell;
     }[];
+    clearExisting?: boolean;
   };
 };
 
@@ -140,11 +141,11 @@ export const usePuzzleController = (
     switch(action.type) {
       case 'setCells':
         setState(state => {
-          const { cells } = action.payload;
+          const { cells, clearExisting } = action.payload;
           const priorCells = state.cellsHistory[state.cellsHistory.length - 1] || [];
           return {
             ...state,
-            cellsHistory: [...state.cellsHistory, setCells(priorCells, cells)]
+            cellsHistory: [...state.cellsHistory, setCells(clearExisting ? [] : priorCells, cells)]
           };
         });
         break;
